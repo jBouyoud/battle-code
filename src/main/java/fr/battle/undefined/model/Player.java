@@ -9,7 +9,12 @@ import lombok.ToString;
 @RequiredArgsConstructor
 public class Player {
 
-	private final int id;
-	private final String name;
+	private final long id;
 	private final Position caddy;
+
+	private int superPowerCount = 3;
+
+	public void decreaseSuperPower() {
+		superPowerCount--;
+	}
 }

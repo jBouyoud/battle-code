@@ -1,7 +1,5 @@
 package fr.battle.undefined.model;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,24 +12,21 @@ import lombok.ToString;
 @RequiredArgsConstructor
 public class WorldState {
 
-	private final Player[] players;
+	private static final int MAX_ROUND = 50;
 
-	private int round;
-	private Map<Player, PlayerInfo> playersState;
-	private List<Position> logos;
+	private final int round;
+	private final Map<Long, PlayerInfo> playersState;
+	private final List<Position> logos;
 
-	public void update(final int round,
-			final Map<Player, PlayerInfo> playersState,
-			final List<Position> logos) {
-		this.round = round;
-		this.playersState = new LinkedHashMap<>(playersState);
-		this.logos = new ArrayList<>(logos);
+	public int getRoundLeft() {
+		return MAX_ROUND - round;
 	}
 
 	@Getter
 	@ToString
 	@RequiredArgsConstructor
 	public static final class PlayerInfo {
+		private final Player player;
 		private final Position position;
 		private final int score;
 		private final PlayerState state;
