@@ -5,10 +5,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.ToString;
-
 @Getter
 @ToString
 @RequiredArgsConstructor
@@ -26,6 +22,18 @@ public class WorldState {
 		this.round = round;
 		this.playersState = new LinkedHashMap<>(playersState);
 		this.logos = new ArrayList<>(logos);
+	}
+
+	public Player getCurrentPlayer() {
+		// TODO find our player
+		return null;
+	}
+
+	public PlayerInfo getPlayerInfo(@NonNull final Player player) {
+		if (!playersState.containsKey(player)) {
+			throw new IllegalArgumentException("Unknown player");
+		}
+		return playersState.get(player);
 	}
 
 	@Getter

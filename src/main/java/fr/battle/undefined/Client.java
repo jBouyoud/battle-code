@@ -18,8 +18,6 @@ import fr.battle.undefined.model.Position;
 import fr.battle.undefined.model.WorldState;
 import fr.battle.undefined.model.WorldState.PlayerInfo;
 import fr.battle.undefined.util.Constants;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @AllArgsConstructor
@@ -83,7 +81,7 @@ public class Client {
 					// Récupération de la derniere action
 					final Optional<Action> a = ias.stream().map(ia -> ia
 							.getNextAction()).distinct().findAny();
-					// .max(a -> a.rate())
+							// .max(a -> a.rate())
 
 					// On joue
 					final String action = Constants.SECRET + "%%action::"
