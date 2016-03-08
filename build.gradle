@@ -1,0 +1,66 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+repositories { maven { url 'http://10.188.136.54:8082/content/groups/public/' } }
+
+// Default eclipse project configuration
+eclipse {
+	classpath {
+		//Default settings for downloading sources and Javadoc
+		downloadSources = true
+		downloadJavadoc = true
+	}
+}
+
+// Ensure that test resources (src/test/resources) are added to CLASSPATH;
+sourceSets {
+	main{runtimeClasspath += files(output.resourcesDir)}
+	test{runtimeClasspath += files(output.resourcesDir)}
+}
+
+// Set Java specifications
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+[ compileJava, compileTestJava ]*.options*.debugOptions*.debugLevel = 'source,lines,vars'
+
+// Task used to create gradlew wrapper
+task wrapper(type: Wrapper) {
+   gradleVersion = '2.11'
+}
+
+// Be sure that all compile tasks depends on new endorsed libraries
+tasks.withType(JavaCompile) {
+	//source as UTF-8
+	options.encoding = 'UTF-8'
+	//enable compilation in a separate daemon process
+	options.fork = true
+	//enable incremental compilation
+	//options.incremental = true
+	options.debugOptions.debugLevel = 'source,lines,vars'
+	// enable deprecation
+	options.deprecation = true
+}
+
+version = '1.0.0'
+group = 'fr.battle.undefined'
+description = "Battle code RAA"
+
+configurations {
+	providedCompile {
+		description = 'Compile time provided dependencies'
+		transitive = false
+	}
+	compile.extendsFrom providedCompile
+}
+
+dependencies {
+	providedCompile 'org.projectlombok:lombok:1.16.+'
+	compile (
+		'org.slf4j:slf4j-api:1.7.+',
+		'org.apache.commons:commons-io:1.3.2',
+		'org.apache.commons:commons-lang3:3.4',
+		'commons-codec:commons-codec:1.10',
+		'org.apache.httpcomponents:httpclient:4.5.2'
+	)
+	runtime 'org.slf4j:slf4j-log4j12:1.7.+'
+}
