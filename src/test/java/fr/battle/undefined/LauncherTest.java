@@ -3,6 +3,7 @@ package fr.battle.undefined;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Properties;
 
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
@@ -39,16 +40,33 @@ public class LauncherTest {
 			final long gameId = Long.parseLong(httpclient.execute(httpget,
 					handler));
 			LOGGER.info("{}", gameId);
+			if (gameId == -1) {
+				return;
+			}
+
+			final Properties prop = new Properties();
+			prop.load(LauncherTest.class.getResourceAsStream(
+					"/test.properties"));
+
+			final String[] ias = prop.getProperty("ias").split(",");
 
 			// Creation des joueurs et leur enregistrement a la partie
 			for (long i = Constants.TEAMID; i < MAX_TEAM_ID; i++) {
 				final long teamId = i;
+				final String className = ias[(int) (i - Constants.TEAMID)];
 				new Thread(new Runnable() {
 
 					@Override
 					public void run() {
-						new Client(SERVER, teamId, SOCKET_NUMBER, gameId)
-								.start();
+						try {
+							new Client(SERVER, teamId, SOCKET_NUMBER, gameId,
+									(IA) Class.forName(className).newInstance())
+											.init(1).start();
+						} catch (InstantiationException | IllegalAccessException
+								| ClassNotFoundException
+								| InterruptedException e) {
+							e.printStackTrace();
+						}
 					}
 				}).start();
 			}
@@ -70,6 +88,22 @@ public class LauncherTest {
 			httpclient.execute(startGet, handler2);
 
 			// Pour voir le jeu
+			LOGGER.info(
+					"To Stop the battle : http://{}:8080/test/stopBattle?gameId={}&teamId={}&secret={}",
+					new Object[] { SERVER, gameId, Constants.TEAMID,
+							Constants.SECRET });
+
+			System.in.read();
+
+			final URI stopUri = new URIBuilder().setScheme("http").setHost(
+					SERVER + ":8080").setPath("/test/stopBattle").setParameter(
+							"gameId", Long.toString(gameId)).setParameter(
+									"teamId", Long.toString(Constants.TEAMID))
+					.setParameter("secret", Constants.SECRET).build();
+
+			final HttpGet stopGet = new HttpGet(stopUri);
+			final ResponseHandler<String> handler3 = new BasicResponseHandler();
+			httpclient.execute(stopGet, handler3);
 			// http://xxxxxx:8080/?gameId=votre game Id
 		}
 	}

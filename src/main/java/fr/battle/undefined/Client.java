@@ -6,11 +6,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
+import fr.battle.undefined.ia.RandomIA;
 import fr.battle.undefined.model.Action;
 import fr.battle.undefined.model.Player;
 import fr.battle.undefined.model.PlayerState;
@@ -18,17 +19,33 @@ import fr.battle.undefined.model.Position;
 import fr.battle.undefined.model.WorldState;
 import fr.battle.undefined.model.WorldState.PlayerInfo;
 import fr.battle.undefined.util.Constants;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @AllArgsConstructor
 public class Client {
 
+	// http://52.29.48.22:8080/api/display/?gameId=<gameID>
+	// Permettrait de se mettre à jour à chaque move d'un autre joueur et de ne
+	// pas attendre la demande via socket ... laisse la seconde complète pour
+	// répondre
+
 	private final String ipServer;
 	private final long teamId;
 	private final int socketNumber;
 	private final long gameId;
+	private final IA ia;
 
-	private final List<IA> ias = new ArrayList<>();
+	private final IA fallbackIA = new RandomIA();
+
+	public Client init(final long sleepTime) throws InterruptedException {
+		ia.setTeamId(teamId);
+		fallbackIA.setTeamId(teamId);
+
+		Thread.sleep(sleepTime);
+		return this;
+	}
 
 	public void start() {
 		LOGGER.info("Demarrage du client");
@@ -47,8 +64,7 @@ public class Client {
 
 			boolean end = false;
 			String message = null;
-			Player[] players = null;
-			WorldState ws = null;
+			Map<Long, Player> players = null;
 
 			while ((message = in.readLine()) != null && !end) {
 				LOGGER.info("Message recu : " + message);
@@ -59,36 +75,43 @@ public class Client {
 				} else if (message.startsWith("worldstate::")) {
 					final String[] components = message.substring("worldstate::"
 							.length()).split(";", -1);
-					if (ws == null) {
-						final String[] playerInfos = components[2].split(":");
-						players = new Player[playerInfos.length];
-						int i = 0;
+					if (players == null) {
+						final String[] playerInfos = components[3].split(":");
+						players = new HashMap<>(playerInfos.length);
 						for (final String playerInfo : playerInfos) {
 							final String[] pComponents = playerInfo.split(",");
-							players[i++] = new Player(i, pComponents[0],
-									new Position(Integer.parseInt(
-											pComponents[1]), Integer.parseInt(
-													pComponents[2])));
+							final long id = Long.parseLong(pComponents[0]);
+							players.put(id, new Player(id, new Position(Integer
+									.parseInt(pComponents[1]), Integer.parseInt(
+											pComponents[2]))));
 						}
-						ws = new WorldState(players);
 					}
 					// Mise à jour de l'etat
-					ws.update(Integer.parseInt(components[0]), parsePlayerState(
-							players, components[1]), parseLogos(components[2]));
+					final WorldState ws = new WorldState(Integer.parseInt(
+							components[0]), parsePlayerState(players,
+									components[1]), parseLogos(components[2]));
 					//
-					final WorldState actualWs = ws;
-					ias.forEach(ia -> ia.setWorldState(actualWs));
-					// Récupération de la derniere action
-					final Optional<Action> a = ias.stream().map(ia -> ia
-							.getNextAction()).distinct().findAny();
-							// .max(a -> a.rate())
+					fallbackIA.setWorldState(ws);
+					ia.setWorldState(ws);
+
+					Action action = ia.getNextAction();
+					if (!action.isAllowed(ws, teamId)) {
+						do {
+							LOGGER.warn("Use fallback to avoid point loss");
+							action = fallbackIA.getNextAction();
+						} while (!action.isAllowed(ws, teamId));
+					}
+
+					if (action.isSuperPower()) {
+						players.get(teamId).decreaseSuperPower();
+					}
 
 					// On joue
-					final String action = Constants.SECRET + "%%action::"
+					final String actionMessage = Constants.SECRET + "%%action::"
 							+ teamId + ";" + gameId + ";" + ws.getRound() + ";"
-							+ a.orElse(Action.EST).getCode();
-					LOGGER.info(action);
-					out.println(action);
+							+ action.getCode();
+					LOGGER.info(actionMessage);
+					out.println(actionMessage);
 					out.flush();
 				} else if ("Inscription KO".equalsIgnoreCase(message)) {
 					LOGGER.info("inscription KO");
@@ -114,18 +137,19 @@ public class Client {
 		return logos;
 	}
 
-	private Map<Player, PlayerInfo> parsePlayerState(final Player[] players,
-			final String rawPlayersInfos) {
-		final Map<Player, PlayerInfo> playersStates = new LinkedHashMap<>();
+	private Map<Long, PlayerInfo> parsePlayerState(
+			final Map<Long, Player> players, final String rawPlayersInfos) {
+		final Map<Long, PlayerInfo> playersStates = new LinkedHashMap<>();
 		final String[] playersInfos = rawPlayersInfos.split(":");
-		for (final Player player : players) {
-			final String[] info = playersInfos[player.getId()].split(",");
-			playersStates.put(player, new PlayerInfo(new Position(Integer
-					.parseInt(info[0]), Integer.parseInt(info[1])), Integer
-							.parseInt(info[2]), PlayerState.valueOf(info[3]
+		for (final String playersInfo : playersInfos) {
+			final String[] info = playersInfo.split(",");
+			final long playerId = Long.parseLong(info[0]);
+			final Player p = players.get(playerId);
+			playersStates.put(playerId, new PlayerInfo(p, new Position(Integer
+					.parseInt(info[1]), Integer.parseInt(info[2])), Integer
+							.parseInt(info[3]), PlayerState.valueOf(info[4]
 									.toUpperCase())));
 		}
 		return playersStates;
 	}
-
 }
