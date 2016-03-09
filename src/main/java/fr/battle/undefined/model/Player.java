@@ -12,6 +12,7 @@ public class Player {
 	private final long id;
 	private final Position caddy;
 
+	// Is Carrying <logo>
 	private int superPowerCount = 3;
 
 	public void decreaseSuperPower() {

@@ -5,8 +5,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Properties;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
@@ -15,6 +13,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
 import fr.battle.undefined.util.Constants;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class LauncherTest {
@@ -28,11 +27,12 @@ public class LauncherTest {
 		LOGGER.info("Demarrage du client de test");
 
 		// Creation la partie
-		try (	final CloseableHttpClient httpclient = HttpClients
+		try (
+				final CloseableHttpClient httpclient = HttpClients
 						.createDefault()) {
-			final URI uri = new URIBuilder().setScheme("http").setHost(
-					SERVER + ":8080/test").setPath("/createBattle")
-					.setParameter("teamId", Long.toString(Constants.TEAMID))
+			final URI uri = new URIBuilder().setScheme("http").setHost(SERVER
+					+ ":8080/test").setPath("/createBattle").setParameter(
+							"teamId", Long.toString(Constants.TEAMID))
 					.setParameter("secret", Constants.SECRET).build();
 
 			final HttpGet httpget = new HttpGet(uri);
@@ -45,8 +45,8 @@ public class LauncherTest {
 			}
 
 			final Properties prop = new Properties();
-			prop.load(LauncherTest.class
-					.getResourceAsStream("/test.properties"));
+			prop.load(LauncherTest.class.getResourceAsStream(
+					"/test.properties"));
 
 			final String[] ias = prop.getProperty("ias").split(",");
 
@@ -61,10 +61,10 @@ public class LauncherTest {
 						try {
 							new Client(SERVER, teamId, SOCKET_NUMBER, gameId,
 									(IA) Class.forName(className).newInstance())
-									.init(1).start();
-						} catch (InstantiationException
-								| IllegalAccessException
-								| ClassNotFoundException | InterruptedException e) {
+											.init(1).start();
+						} catch (InstantiationException | IllegalAccessException
+								| ClassNotFoundException
+								| InterruptedException e) {
 							e.printStackTrace();
 						}
 					}
@@ -78,9 +78,9 @@ public class LauncherTest {
 			// Demarrage de la game
 			// http://xxxxxx:8080/test/startBattle?gameId=xxxx&teamId=10&secret=bobsecret
 			final URI startUri = new URIBuilder().setScheme("http").setHost(
-					SERVER + ":8080").setPath("/test/startBattle")
-					.setParameter("gameId", Long.toString(gameId))
-					.setParameter("teamId", Long.toString(Constants.TEAMID))
+					SERVER + ":8080").setPath("/test/startBattle").setParameter(
+							"gameId", Long.toString(gameId)).setParameter(
+									"teamId", Long.toString(Constants.TEAMID))
 					.setParameter("secret", Constants.SECRET).build();
 
 			final HttpGet startGet = new HttpGet(startUri);
@@ -92,6 +92,18 @@ public class LauncherTest {
 					"To Stop the battle : http://{}:8080/test/stopBattle?gameId={}&teamId={}&secret={}",
 					new Object[] { SERVER, gameId, Constants.TEAMID,
 							Constants.SECRET });
+
+			System.in.read();
+
+			final URI stopUri = new URIBuilder().setScheme("http").setHost(
+					SERVER + ":8080").setPath("/test/stopBattle").setParameter(
+							"gameId", Long.toString(gameId)).setParameter(
+									"teamId", Long.toString(Constants.TEAMID))
+					.setParameter("secret", Constants.SECRET).build();
+
+			final HttpGet stopGet = new HttpGet(stopUri);
+			final ResponseHandler<String> handler3 = new BasicResponseHandler();
+			httpclient.execute(stopGet, handler3);
 			// http://xxxxxx:8080/?gameId=votre game Id
 		}
 	}
