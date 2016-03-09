@@ -2,6 +2,7 @@ package fr.battle.undefined.ia;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import fr.battle.undefined.IA;
@@ -12,7 +13,9 @@ import fr.battle.undefined.model.WorldState;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class SprintRunner implements IA {
 
 	private WorldState ws;
@@ -47,13 +50,21 @@ public class SprintRunner implements IA {
 			target = current.getCaddy();
 		} else {
 			// Get closest
-			target = getClosestPosition(currentPosition);
+			final Optional<Distance> potentialTarget = getClosestPosition(
+					currentPosition);
+			if (potentialTarget.isPresent()) {
+				target = potentialTarget.get().getPosition();
+			} else {
+				target = current.getCaddy();
+			}
 		}
+
 		final List<Action> actions = getPossibleActionsToPerform(
 				currentPosition, target);
+
 		final List<Position> futurePosition = getFuturePositions(
 				currentPosition, actions);
-
+		LOGGER.info("target {}, actions: {}", target, actions);
 		return getBestSolutions(futurePosition, actions);
 	}
 
@@ -64,17 +75,18 @@ public class SprintRunner implements IA {
 	 *            current position
 	 * @return position of the closest logo
 	 */
-	private Position getClosestPosition(
+	private Optional<Distance> getClosestPosition(
 			@NonNull final Position currentPosition) {
 		return ws.getLogos().parallelStream().filter(logo -> !ws
-				.isCarredBySomeone(logo)).map(p -> {
-					final double distance = Math.sqrt(Math.pow(Math.abs(
-							currentPosition.getX() - p.getX()), 2) + Math.pow(
-									Math.abs(currentPosition.getY() - p.getY()),
-									2));
-					return new Distance(p, distance);
-				}).min((a, b) -> a.getDistance().compareTo(b.getDistance()))
-				.get().getPosition();
+				.isCarredBySomeone(logo)).filter(logo -> !ws.isLogoInCaddy(
+						logo)).map(p -> {
+							final double distance = Math.sqrt(Math.pow(Math.abs(
+									currentPosition.getX() - p.getX()), 2)
+									+ Math.pow(Math.abs(currentPosition.getY()
+											- p.getY()), 2));
+							return new Distance(p, distance);
+						}).min((a, b) -> a.getDistance().compareTo(b
+								.getDistance()));
 	}
 
 	/**
@@ -105,23 +117,24 @@ public class SprintRunner implements IA {
 	 * @return list of possible actions
 	 */
 	private List<Action> convertAngleToDirection(final double angle) {
+		LOGGER.info("angle {}", angle);
 		// TODO check if list with one element are better or not
 		if (angle == 0) {
 			return Arrays.asList(Action.EST);
 		} else if (angle == 90) {
-			return Arrays.asList(Action.NORD);
+			return Arrays.asList(Action.SUD);
 		} else if (angle == 180) {
 			return Arrays.asList(Action.OUEST);
 		} else if (angle == 270) {
-			return Arrays.asList(Action.SUD);
+			return Arrays.asList(Action.NORD);
 		} else if (angle > 0 && angle < 90) {
-			return Arrays.asList(Action.EST, Action.NORD);
+			return Arrays.asList(Action.EST, Action.SUD);
 		} else if (angle > 90 && angle < 180) {
-			return Arrays.asList(Action.NORD, Action.OUEST);
+			return Arrays.asList(Action.SUD, Action.OUEST);
 		} else if (angle > 180 && angle < 270) {
-			return Arrays.asList(Action.OUEST, Action.SUD);
+			return Arrays.asList(Action.OUEST, Action.NORD);
 		}
-		return Arrays.asList(Action.SUD, Action.EST);
+		return Arrays.asList(Action.NORD, Action.EST);
 	}
 
 	/**

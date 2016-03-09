@@ -41,6 +41,12 @@ public class WorldState {
 				.count() == 1;
 	}
 
+	public boolean isLogoInCaddy(@NonNull final Position logo) {
+		return playersState.values().parallelStream().filter(
+				playerInfo -> playerInfo.getPlayer().getCaddy().equals(logo))
+				.count() == 1;
+	}
+
 	@Getter
 	@ToString
 	@RequiredArgsConstructor
