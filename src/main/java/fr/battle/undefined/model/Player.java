@@ -2,7 +2,6 @@ package fr.battle.undefined.model;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.ToString;
 
 @Getter
@@ -12,8 +11,6 @@ public class Player {
 
 	private final long id;
 	private final Position caddy;
-	@Setter
-	private boolean full;
 
 	// Is Carrying <logo>
 	private int superPowerCount = 3;

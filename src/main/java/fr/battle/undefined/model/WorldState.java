@@ -23,16 +23,22 @@ public class WorldState {
 		return MAX_ROUND - round;
 	}
 
-	public Player getCurrentPlayer() {
-		// TODO find our player
-		return null;
+	public PlayerInfo getPlayerInfo(@NonNull final long teamId) {
+		if (!playersState.containsKey(teamId)) {
+			throw new IllegalArgumentException("Unknown team Id");
+		}
+		return playersState.get(teamId);
 	}
 
-	public PlayerInfo getPlayerInfo(@NonNull final Player player) {
-		if (!playersState.containsKey(player)) {
-			throw new IllegalArgumentException("Unknown player");
-		}
-		return playersState.get(player);
+	public boolean isCarrying(final long teamId) {
+		return logos.parallelStream().filter(p -> p.equals(playersState.get(
+				teamId).getPosition())).count() == 1;
+	}
+
+	public boolean isCarredBySomeone(@NonNull final Position logo) {
+		return playersState.values().parallelStream().filter(
+				playerInfo -> playerInfo.getPosition().equals(logo))
+				.count() == 1;
 	}
 
 	@Getter

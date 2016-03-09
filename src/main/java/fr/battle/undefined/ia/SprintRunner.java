@@ -1,4 +1,4 @@
-package fr.battle.undefined.impl;
+package fr.battle.undefined.ia;
 
 import java.util.Arrays;
 import java.util.List;
@@ -16,6 +16,12 @@ import lombok.RequiredArgsConstructor;
 public class SprintRunner implements IA {
 
 	private WorldState ws;
+	private long teamId;
+
+	@Override
+	public void setTeamId(final long teamId) {
+		this.teamId = teamId;
+	}
 
 	/*
 	 * (non-Javadoc)
@@ -34,11 +40,10 @@ public class SprintRunner implements IA {
 	@Override
 	public Action getNextAction() {
 		// Case we already got a logo, we go back home
-		final Player current = ws.getCurrentPlayer();
-		final Position currentPosition = ws.getPlayerInfo(current)
-				.getPosition();
+		final Player current = ws.getPlayerInfo(teamId).getPlayer();
+		final Position currentPosition = ws.getPlayerInfo(teamId).getPosition();
 		final Position target;
-		if (current.isFull()) {
+		if (ws.isCarrying(teamId)) {
 			target = current.getCaddy();
 		} else {
 			// Get closest
@@ -61,13 +66,15 @@ public class SprintRunner implements IA {
 	 */
 	private Position getClosestPosition(
 			@NonNull final Position currentPosition) {
-		return ws.getLogos().parallelStream().map(p -> {
-			final double distance = Math.sqrt(Math.pow(Math.abs(currentPosition
-					.getX() - p.getX()), 2) + Math.pow(Math.abs(currentPosition
-							.getY() - p.getY()), 2));
-			return new Distance(p, distance);
-		}).min((a, b) -> a.getDistance().compareTo(b.getDistance())).get()
-				.getPosition();
+		return ws.getLogos().parallelStream().filter(logo -> !ws
+				.isCarredBySomeone(logo)).map(p -> {
+					final double distance = Math.sqrt(Math.pow(Math.abs(
+							currentPosition.getX() - p.getX()), 2) + Math.pow(
+									Math.abs(currentPosition.getY() - p.getY()),
+									2));
+					return new Distance(p, distance);
+				}).min((a, b) -> a.getDistance().compareTo(b.getDistance()))
+				.get().getPosition();
 	}
 
 	/**
@@ -183,5 +190,4 @@ public class SprintRunner implements IA {
 		private final Position position;
 		private final Double distance;
 	}
-
 }
