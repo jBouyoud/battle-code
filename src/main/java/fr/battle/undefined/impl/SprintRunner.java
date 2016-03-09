@@ -9,6 +9,9 @@ import fr.battle.undefined.model.Action;
 import fr.battle.undefined.model.Player;
 import fr.battle.undefined.model.Position;
 import fr.battle.undefined.model.WorldState;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 public class SprintRunner implements IA {
 
@@ -33,7 +36,7 @@ public class SprintRunner implements IA {
 		// Case we already got a logo, we go back home
 		final Player current = ws.getCurrentPlayer();
 		final Position currentPosition = ws.getPlayerInfo(current)
-				.getPosition()
+				.getPosition();
 		final Position target;
 		if (current.isFull()) {
 			target = current.getCaddy();
@@ -41,9 +44,10 @@ public class SprintRunner implements IA {
 			// Get closest
 			target = getClosestPosition(currentPosition);
 		}
-		final List<Action> actions = getActionToPerform(currentPosition, target);
-		final List<Position> futurePosition = getFuturePositions(current,
-				actions);
+		final List<Action> actions = getPossibleActionsToPerform(
+				currentPosition, target);
+		final List<Position> futurePosition = getFuturePositions(
+				currentPosition, actions);
 
 		return getBestSolutions(futurePosition, actions);
 	}
@@ -62,7 +66,8 @@ public class SprintRunner implements IA {
 					.getX() - p.getX()), 2) + Math.pow(Math.abs(currentPosition
 							.getY() - p.getY()), 2));
 			return new Distance(p, distance);
-		}).min((a, b) -> a.getDistance().compareTo(b.getDistance())).get();
+		}).min((a, b) -> a.getDistance().compareTo(b.getDistance())).get()
+				.getPosition();
 	}
 
 	/**
@@ -137,7 +142,7 @@ public class SprintRunner implements IA {
 	 *            action performed to get future positions
 	 * @return best actions to run
 	 */
-	private Action getBestSolutions(@NonNull final List<Positions> positions,
+	private Action getBestSolutions(@NonNull final List<Position> positions,
 			@NonNull final List<Action> actions) {
 		// TODO determine wheter or not we can be knock out on the next round
 		// ...
