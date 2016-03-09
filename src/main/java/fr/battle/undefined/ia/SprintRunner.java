@@ -3,17 +3,17 @@ package fr.battle.undefined.ia;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
+import javafx.util.Pair;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import fr.battle.undefined.IA;
 import fr.battle.undefined.model.Action;
 import fr.battle.undefined.model.Player;
 import fr.battle.undefined.model.Position;
 import fr.battle.undefined.model.WorldState;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class SprintRunner implements IA {
@@ -43,15 +43,15 @@ public class SprintRunner implements IA {
 	@Override
 	public Action getNextAction() {
 		// Case we already got a logo, we go back home
-		final Player current = ws.getPlayerInfo(teamId).getPlayer();
-		final Position currentPosition = ws.getPlayerInfo(teamId).getPosition();
+		final Player current = ws.getMe().getPlayer();
+		final Position currentPosition = ws.getMe().getPosition();
 		final Position target;
-		if (ws.isCarrying(teamId)) {
+		if (ws.isCarrying(current.getId())) {
 			target = current.getCaddy();
 		} else {
 			// Get closest
-			final Optional<Distance> potentialTarget = getClosestPosition(
-					currentPosition);
+			// TODO If no more logo in game.... Slape other dude
+			final Optional<Distance> potentialTarget = getClosestPosition(currentPosition);
 			if (potentialTarget.isPresent()) {
 				target = potentialTarget.get().getPosition();
 			} else {
@@ -59,13 +59,21 @@ public class SprintRunner implements IA {
 			}
 		}
 
-		final List<Action> actions = getPossibleActionsToPerform(
-				currentPosition, target);
+		final Optional<Pair<Action, Double>> bestAction = getPossibleActionsToPerform(
+				currentPosition, target).stream()
+		// Restrict to allowed actions
+				.filter(a -> a.isAllowed(ws, teamId))
+				// Retreive next position for all actions
+				.map(a -> new Pair<>(a, ws.getReward(a)))
+				// Get the best one
+				.max((a, b) -> a.getValue().compareTo(b.getValue()));
 
-		final List<Position> futurePosition = getFuturePositions(
-				currentPosition, actions);
-		LOGGER.info("target {}, actions: {}", target, actions);
-		return getBestSolutions(futurePosition, actions);
+		if (!bestAction.isPresent()) {
+			LOGGER.info("Unable to find any action");
+			return null;
+		}
+		LOGGER.info("target {}, actions: {}", target, bestAction.get().getKey());
+		return bestAction.get().getKey();
 	}
 
 	/**
@@ -77,16 +85,19 @@ public class SprintRunner implements IA {
 	 */
 	private Optional<Distance> getClosestPosition(
 			@NonNull final Position currentPosition) {
-		return ws.getLogos().parallelStream().filter(logo -> !ws
-				.isCarredBySomeone(logo)).filter(logo -> !ws.isLogoInCaddy(
-						logo)).map(p -> {
-							final double distance = Math.sqrt(Math.pow(Math.abs(
-									currentPosition.getX() - p.getX()), 2)
-									+ Math.pow(Math.abs(currentPosition.getY()
-											- p.getY()), 2));
-							return new Distance(p, distance);
-						}).min((a, b) -> a.getDistance().compareTo(b
-								.getDistance()));
+		// TODO that is not the nearest of an other player
+		// TODO remove logo too far away
+		return ws.getLogos().parallelStream().filter(
+				logo -> !ws.isCarredBySomeone(logo)).filter(
+				logo -> !ws.isLogoInCaddy(logo)).map(
+				p -> {
+					final double distance = Math.sqrt(Math.pow(Math
+							.abs(currentPosition.getX() - p.getX()), 2)
+							+ Math.pow(Math.abs(currentPosition.getY()
+									- p.getY()), 2));
+					return new Distance(p, distance);
+				}).min(
+				(a, b) -> Double.compare(a.getDistance(), b.getDistance()));
 	}
 
 	/**
@@ -101,8 +112,10 @@ public class SprintRunner implements IA {
 	 */
 	private List<Action> getPossibleActionsToPerform(
 			@NonNull final Position current, @NonNull final Position target) {
-		double angle = Math.toDegrees(Math.atan2(target.getY() - current.getY(),
-				target.getX() - current.getX()));
+		double angle = Math
+				.toDegrees(Math.atan2(target.getY() - current.getY(), target
+						.getX()
+						- current.getX()));
 		if (angle < 0) {
 			angle += 360;
 		}
@@ -138,69 +151,12 @@ public class SprintRunner implements IA {
 	}
 
 	/**
-	 * Method returning futures position for a list of action
-	 *
-	 * @param position
-	 *            current position
-	 * @param actions
-	 *            list of actions
-	 * @return list of position
-	 */
-	private List<Position> getFuturePositions(@NonNull final Position current,
-			@NonNull final List<Action> actions) {
-		return actions.parallelStream().map((a) -> appendAction(current, a))
-				.collect(Collectors.toList());
-	}
-
-	/**
-	 * Return the best action to perform depending on the list of action and
-	 * future position
-	 *
-	 * @param positions
-	 *            future possible positions
-	 * @param actions
-	 *            action performed to get future positions
-	 * @return best actions to run
-	 */
-	private Action getBestSolutions(@NonNull final List<Position> positions,
-			@NonNull final List<Action> actions) {
-		// TODO determine wheter or not we can be knock out on the next round
-		// ...
-		return actions.get(0);
-	}
-
-	/**
-	 * Append an action to a position
-	 *
-	 * @param position
-	 *            position to modify
-	 * @param action
-	 *            action to perform
-	 */
-	private Position appendAction(@NonNull final Position position,
-			@NonNull final Action action) {
-		if (Action.NORD.equals(action)) {
-			return new Position(position.getX() + 1, position.getY());
-		}
-		if (Action.OUEST.equals(action)) {
-			return new Position(position.getX(), position.getY() - 1);
-		}
-		if (Action.SUD.equals(action)) {
-			return new Position(position.getX() - 1, position.getY());
-		}
-		if (Action.EST.equals(action)) {
-			return new Position(position.getX(), position.getY() + 1);
-		}
-		throw new IllegalArgumentException("Unknown action");
-	}
-
-	/**
 	 * Internal class used to find closest logo to catch up
 	 */
 	@Getter
 	@RequiredArgsConstructor
 	private static class Distance {
 		private final Position position;
-		private final Double distance;
+		private final double distance;
 	}
 }
