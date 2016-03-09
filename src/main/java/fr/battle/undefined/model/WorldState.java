@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
@@ -20,6 +21,30 @@ public class WorldState {
 
 	public int getRoundLeft() {
 		return MAX_ROUND - round;
+	}
+
+	public PlayerInfo getPlayerInfo(@NonNull final long teamId) {
+		if (!playersState.containsKey(teamId)) {
+			throw new IllegalArgumentException("Unknown team Id");
+		}
+		return playersState.get(teamId);
+	}
+
+	public boolean isCarrying(final long teamId) {
+		return logos.parallelStream().filter(p -> p.equals(playersState.get(
+				teamId).getPosition())).count() == 1;
+	}
+
+	public boolean isCarredBySomeone(@NonNull final Position logo) {
+		return playersState.values().parallelStream().filter(
+				playerInfo -> playerInfo.getPosition().equals(logo))
+				.count() == 1;
+	}
+
+	public boolean isLogoInCaddy(@NonNull final Position logo) {
+		return playersState.values().parallelStream().filter(
+				playerInfo -> playerInfo.getPlayer().getCaddy().equals(logo))
+				.count() == 1;
 	}
 
 	@Getter
