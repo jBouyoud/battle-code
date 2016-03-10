@@ -15,9 +15,9 @@ import fr.battle.undefined.util.Constants;
 @Slf4j
 public class LauncherTest {
 
-	private static final String SERVER = "52.29.48.22";
-	private static final int SOCKET_NUMBER = 2160;
-	private static final long MAX_TEAM_ID = Constants.TEAMID + 6;
+	public static final String SERVER = "52.29.48.22";
+	public static final int SOCKET_NUMBER = 2160;
+	public static final long MAX_TEAM_ID = Constants.TEAMID + 6;
 
 	public static void main(final String[] zero) throws IOException, URISyntaxException, InterruptedException {
 		LOGGER.info("Demarrage du client de test");
