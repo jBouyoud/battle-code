@@ -11,10 +11,6 @@
 			<name>org.eclipse.jdt.core.javabuilder</name>
 			<arguments/>
 		</buildCommand>
-		<buildCommand>
-			<name>org.sonarlint.eclipse.core.sonarlintBuilder</name>
-			<arguments/>
-		</buildCommand>
 	</buildSpec>
 	<linkedResources/>
 </projectDescription>
