@@ -1,7 +1,6 @@
 package fr.battle.undefined.ia;
 
 import java.io.InputStream;
-import java.util.Arrays;
 
 import org.neuroph.core.NeuralNetwork;
 
@@ -9,30 +8,28 @@ import fr.battle.undefined.IA;
 import fr.battle.undefined.ia.nn.BattleNN;
 import fr.battle.undefined.model.Action;
 import fr.battle.undefined.model.WorldState;
+import fr.battle.undefined.util.Constants;
 
 public class DeepQNetworkIA implements IA {
 
 	private static final String NN_RESOURCE = "classpath:/nn.bak";
-
-	protected final int size = 836;
-
+	private static final int FRAME_HISTORY = 4;
 	protected final BattleNN nn;
 
 	public static long minErrorCounter;
 
 	private WorldState ws;
 
-	protected int[] history = new int[836];
+	protected int[] history = new int[Constants.BOARD_SIZE];
 
 	public DeepQNetworkIA() {
 		final InputStream stream = DeepQNetworkIA.class.getResourceAsStream(
 				NN_RESOURCE);
 		if (stream == null) {
-			nn = new BattleNN(836, 8);
+			nn = new BattleNN(Constants.BOARD_SIZE, Constants.NUMBER_OF_ACTION);
 		} else {
 			nn = (BattleNN) NeuralNetwork.load(stream);
 		}
-		Arrays.fill(history, 0);
 	}
 
 	public void save() {
@@ -57,10 +54,12 @@ public class DeepQNetworkIA implements IA {
 	public Action getNextAction() {
 		// Update history
 		// Shift old screen
-		System.arraycopy(history, 836 / 4 - 1, history, 0, 836 - 836 / 4 - 1);
+		System.arraycopy(history, Constants.BOARD_SIZE / FRAME_HISTORY - 1,
+				history, 0, Constants.BOARD_SIZE - Constants.BOARD_SIZE
+						/ FRAME_HISTORY - 1);
 		// Add new frame
-		System.arraycopy(ws.getAsArray(), 0, history, 836 / 3 - 1, ws
-				.getAsArray().length);
+		System.arraycopy(ws.getAsArray(), 0, history, Constants.BOARD_SIZE / 3
+				- 1, ws.getAsArray().length);
 		nn.setInput(history);
 		nn.calculate();
 		final double[] results = nn.getOutput();
@@ -73,7 +72,6 @@ public class DeepQNetworkIA implements IA {
 				refValue = results[i];
 			}
 		}
-
 		return Action.values()[actionIndex];
 	}
 

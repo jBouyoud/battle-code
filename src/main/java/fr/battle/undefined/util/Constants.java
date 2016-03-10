@@ -8,10 +8,12 @@ public abstract class Constants {
 	public static final String SECRET = "P2389D8FKL";
 
 	public static final int MAP_WIDTH = 16;// x
-	public static final int MAP_HEIGHT = 12; // y
+	public static final int MAP_HEIGHT = 13; // y
 	public static final int BOARD_SIZE = MAP_WIDTH * MAP_HEIGHT;
+	public static final int NUMBER_OF_ACTION = 8;
 
 	public static final Position ORIGIN = new Position(0, 0);
-	public static final Position END_OF_MAP = new Position(MAP_WIDTH, MAP_HEIGHT);
+	public static final Position END_OF_MAP = new Position(MAP_WIDTH,
+			MAP_HEIGHT);
 
 }
