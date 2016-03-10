@@ -1,7 +1,6 @@
 package fr.battle.undefined.model;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -9,6 +8,7 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
+import fr.battle.undefined.util.Constants;
 
 @Getter
 @ToString
@@ -42,19 +42,17 @@ public class WorldState {
 	}
 
 	public boolean isCarrying(final long teamId) {
-		return logos.parallelStream().filter(
-				p -> p.equals(playersState.get(teamId).getPosition())).count() == 1;
+		return logos.parallelStream().filter(p -> p.equals(playersState.get(teamId).getPosition())).count() == 1;
 	}
 
 	public boolean isCarredBySomeone(final Position logo) {
-		return playersState.values().parallelStream().filter(
-				playerInfo -> playerInfo.getPosition().equals(logo)).count() == 1;
+		return playersState.values().parallelStream().filter(playerInfo -> playerInfo.getPosition().equals(logo))
+				.count() == 1;
 	}
 
 	public boolean isLogoInCaddy(final Position logo) {
 		return playersState.values().parallelStream().filter(
-				playerInfo -> playerInfo.getPlayer().getCaddy().equals(logo))
-				.count() == 1;
+				playerInfo -> playerInfo.getPlayer().getCaddy().equals(logo)).count() == 1;
 	}
 
 	public Stream<PlayerInfo> getSlappedPlayers(final Position newPos) {
@@ -68,8 +66,7 @@ public class WorldState {
 	}
 
 	public double getReward(final Action a) {
-		final Position newPos = a.getNextPosition(me.getPosition(), me
-				.getState());
+		final Position newPos = a.getNextPosition(me.getPosition(), me.getState());
 		if (PlayerState.STUNNED.equals(me.getState())) {
 			return .0d;
 		}
@@ -82,8 +79,7 @@ public class WorldState {
 		// It a slapping action
 		reward += getSlappedPlayers(newPos).count() * 2;
 
-		if (isCarrying(me.getPlayer().getId())
-				&& newPos.equals(me.getPlayer().getCaddy())) {
+		if (isCarrying(me.getPlayer().getId()) && newPos.equals(me.getPlayer().getCaddy())) {
 			reward += 30;
 		}
 		return reward;
@@ -92,36 +88,27 @@ public class WorldState {
 	/**
 	 * Retourne l'état du monde comme une liste d'Integer
 	 *
-	 * @return List<Integer> etat du monde
+	 * @return int[] etat du monde
 	 */
-	public List<Integer> getAsArray() {
-		final List<Integer> wordArray = new ArrayList<>(Collections.nCopies(MAP_WIDTH * MAP_HEIGHT + 1, 0));
-
+	public int[] getAsArray() {
+		final int[] world = new int[Constants.BOARD_SIZE + 1];
 		// Logo disponibles
 		for (final Position position : logos) {
-			wordArray.set(position.getX() + position.getY() * MAP_WIDTH,
-					wordArray.get(position.getX() + position.getY() * MAP_WIDTH) | TILE_LOGO);
+			world[position.getX() + position.getY() * MAP_WIDTH] |= TILE_LOGO;
 		}
 
-		// Caddies
-		for (int i = 1; i <= 12; i += 2) {
-			wordArray.set(i * MAP_WIDTH + 1, wordArray.get(i * MAP_WIDTH + 1) | TILE_CADDY);
-		}
-
-		// Joueurs
 		for (final Map.Entry<Long, PlayerInfo> entry : playersState.entrySet()) {
 			final PlayerInfo playerInfo = entry.getValue();
+			// Caddy
+			world[playerInfo.getPlayer().getCaddy().getX() + playerInfo.getPlayer().getCaddy().getY() * MAP_WIDTH] |= TILE_CADDY;
 
-			final int tile = me.equals(playerInfo) ? TILE_ME : TILE_OPPONENT;
-
-			wordArray.set(playerInfo.position.getX() + playerInfo.position.getY() * MAP_WIDTH,
-					wordArray.get(playerInfo.position.getX() + playerInfo.position.getY() * MAP_WIDTH) | tile);
+			// Joueur
+			world[playerInfo.getPosition().getX() + playerInfo.getPosition().getY() * MAP_WIDTH] |= me
+					.equals(playerInfo) ? TILE_ME : TILE_OPPONENT;
 		}
-
 		// Nombre de tour restants
-		wordArray.set(MAP_WIDTH * MAP_HEIGHT, getRoundLeft());
-
-		return wordArray;
+		world[MAP_WIDTH * MAP_HEIGHT] = getRoundLeft();
+		return world;
 	}
 
 	@Getter

@@ -40,7 +40,7 @@ public class Client {
 	private final IA fallbackIA = new NonSuckingRandomIA();
 
 	@Getter
-	private boolean ended = false;
+	private volatile boolean ended = false;
 
 	public Client init(final long sleepTime) throws InterruptedException {
 		ia.setTeamId(teamId);

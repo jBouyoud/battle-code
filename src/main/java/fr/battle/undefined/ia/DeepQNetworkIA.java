@@ -11,7 +11,7 @@ public class DeepQNetworkIA implements IA {
 
 	private static final String NN_RESOURCE = "classpath:/nn.bak";
 
-	private static BattleNN nn;
+	protected static BattleNN nn;
 
 	public DeepQNetworkIA() {
 		final InputStream stream = DeepQNetworkIA.class.getResourceAsStream(

@@ -9,8 +9,9 @@ public abstract class Constants {
 
 	public static final int MAP_WIDTH = 16;// x
 	public static final int MAP_HEIGHT = 12; // y
+	public static final int BOARD_SIZE = MAP_WIDTH * MAP_HEIGHT;
 
 	public static final Position ORIGIN = new Position(0, 0);
-	public static final Position END_OF_MAP = new Position(16, 12);
+	public static final Position END_OF_MAP = new Position(MAP_WIDTH, MAP_HEIGHT);
 
 }
