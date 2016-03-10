@@ -1,10 +1,10 @@
 package fr.battle.undefined;
 
 import java.io.IOException;
-import java.net.ProxySelector;
 import java.net.URISyntaxException;
 import java.util.Properties;
 
+import lombok.extern.slf4j.Slf4j;
 import fr.battle.undefined.util.Constants;
 
 /**
@@ -19,22 +19,18 @@ public class LauncherTest {
 	private static final int SOCKET_NUMBER = 2160;
 	private static final long MAX_TEAM_ID = Constants.TEAMID + 6;
 
-	public static void main(final String[] zero) throws IOException,
-			URISyntaxException, InterruptedException {
+	public static void main(final String[] zero) throws IOException, URISyntaxException, InterruptedException {
 		LOGGER.info("Demarrage du client de test");
 
-		final SystemDefaultRoutePlanner routePlanner = new SystemDefaultRoutePlanner(
-				ProxySelector.getDefault());
 		// Creation la partie
-		try (	RestClient restClient = new RestClient(SERVER)) {
+		try (RestClient restClient = new RestClient(SERVER)) {
 			final long gameId = restClient.createGame();
 			if (gameId == -1) {
 				return;
 			}
 
 			final Properties prop = new Properties();
-			prop.load(LauncherTest.class
-					.getResourceAsStream("/test.properties"));
+			prop.load(LauncherTest.class.getResourceAsStream("/test.properties"));
 
 			final String[] ias = prop.getProperty("ias").split(",");
 
@@ -47,12 +43,10 @@ public class LauncherTest {
 					@Override
 					public void run() {
 						try {
-							new Client(SERVER, teamId, SOCKET_NUMBER, gameId,
-									(IA) Class.forName(className).newInstance())
-									.init(1).start();
-						} catch (InstantiationException
-								| IllegalAccessException
-								| ClassNotFoundException | InterruptedException e) {
+							new Client(SERVER, teamId, SOCKET_NUMBER, gameId, (IA) Class.forName(className)
+									.newInstance()).init(1).start();
+						} catch (InstantiationException | IllegalAccessException | ClassNotFoundException
+								| InterruptedException e) {
 							e.printStackTrace();
 						}
 					}
