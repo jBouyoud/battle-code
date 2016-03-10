@@ -1,6 +1,7 @@
 package fr.battle.undefined.model;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -15,6 +16,14 @@ import lombok.ToString;
 public class WorldState {
 
 	private static final int MAX_ROUND = 50;
+
+	private static final int MAP_WIDTH = 16;
+	private static final int MAP_HEIGHT = 13;
+
+	private static final int TILE_ME = 0x1000;
+	private static final int TILE_OPPONENT = 0x0100;
+	private static final int TILE_LOGO = 0x0010;
+	private static final int TILE_CADDY = 0x0001;
 
 	private final int round;
 	private final Map<Long, PlayerInfo> playersState;
@@ -78,6 +87,41 @@ public class WorldState {
 			reward += 30;
 		}
 		return reward;
+	}
+
+	/**
+	 * Retourne l'état du monde comme une liste d'Integer
+	 *
+	 * @return List<Integer> etat du monde
+	 */
+	public List<Integer> getAsArray() {
+		final List<Integer> wordArray = new ArrayList<>(Collections.nCopies(MAP_WIDTH * MAP_HEIGHT + 1, 0));
+
+		// Logo disponibles
+		for (final Position position : logos) {
+			wordArray.set(position.getX() + position.getY() * MAP_WIDTH,
+					wordArray.get(position.getX() + position.getY() * MAP_WIDTH) | TILE_LOGO);
+		}
+
+		// Caddies
+		for (int i = 1; i <= 12; i += 2) {
+			wordArray.set(i * MAP_WIDTH + 1, wordArray.get(i * MAP_WIDTH + 1) | TILE_CADDY);
+		}
+
+		// Joueurs
+		for (final Map.Entry<Long, PlayerInfo> entry : playersState.entrySet()) {
+			final PlayerInfo playerInfo = entry.getValue();
+
+			final int tile = me.equals(playerInfo) ? TILE_ME : TILE_OPPONENT;
+
+			wordArray.set(playerInfo.position.getX() + playerInfo.position.getY() * MAP_WIDTH,
+					wordArray.get(playerInfo.position.getX() + playerInfo.position.getY() * MAP_WIDTH) | tile);
+		}
+
+		// Nombre de tour restants
+		wordArray.set(MAP_WIDTH * MAP_HEIGHT, getRoundLeft());
+
+		return wordArray;
 	}
 
 	@Getter
