@@ -59,8 +59,12 @@ public class WorldState {
 	}
 
 	public double getReward(final Action a) {
-		final Position newPos = a.getNextPosition(me.getPosition());
-
+		final Position newPos = a.getNextPosition(me.getPosition(), me
+				.getState());
+		if (PlayerState.STUNNED.equals(me.getState())) {
+			return .0d;
+		}
+		// TODO Gerer le stunned
 		double reward = .0d;
 		// Unauthorized actions
 		if (!a.isAllowed(this, me.getPlayer().getId())) {

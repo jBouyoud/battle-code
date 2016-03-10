@@ -117,9 +117,10 @@ public class Client {
 					}
 					ws.getMe().getLastSlaped().clear();
 					ws.getSlappedPlayers(
-							action.getNextPosition(ws.getMe().getPosition()))
-							.map(pi -> pi.getPlayer()).forEach(
-									ws.getMe().getLastSlaped()::add);
+							action.getNextPosition(ws.getMe().getPosition(), ws
+									.getMe().getState())).map(
+							pi -> pi.getPlayer()).forEach(
+							ws.getMe().getLastSlaped()::add);
 
 				} else if ("Inscription KO".equalsIgnoreCase(message)) {
 					LOGGER.info("inscription KO");

@@ -29,9 +29,14 @@ public enum Action {
 	 *
 	 * @param actual
 	 *            actual player position
+	 * @param playerState
 	 * @return the postion after the action
 	 */
-	public Position getNextPosition(final Position actual) {
+	public Position getNextPosition(final Position actual,
+			final PlayerState playerState) {
+		if (PlayerState.STUNNED.equals(playerState)) {
+			return actual;
+		}
 		return new Position(actual.getX() + dx, actual.getY() + dy);
 	}
 
@@ -50,7 +55,7 @@ public enum Action {
 		}
 
 		// Move hors de la map
-		final Position newPos = getNextPosition(me.getPosition());
+		final Position newPos = getNextPosition(me.getPosition(), me.getState());
 		if (!newPos.isInMap()) {
 			return false;
 		}
