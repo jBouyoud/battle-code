@@ -1,7 +1,5 @@
 package fr.battle.undefined.ia.nn;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.neuroph.core.Layer;
 import org.neuroph.core.NeuralNetwork;
 import org.neuroph.core.Neuron;
@@ -42,7 +40,6 @@ import org.neuroph.util.random.RangeRandomizer;
  * https://github.com/technobium/neuroph-neural-network/blob/master/src/main/
  * java/com/technobium/NeuralNetworkStockPredictor.java#L134
  */
-@Slf4j
 public class BattleNN extends NeuralNetwork<BackPropagation> {
 
 	/** Serial ID */
