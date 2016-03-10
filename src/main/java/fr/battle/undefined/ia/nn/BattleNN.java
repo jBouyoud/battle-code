@@ -48,34 +48,16 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 	/** Serial ID */
 	private static final long serialVersionUID = -8772491149779658792L;
 
-	private final int inputNeurons;
-	private final int outputNeurons;
-
 	/**
 	 * @param inputNeurons
 	 * @param outputNeurons
 	 */
 	public BattleNN(final int inputNeurons, final int outputNeurons) {
 
-		this.inputNeurons = inputNeurons;
-		this.outputNeurons = outputNeurons;
-
 		final int hiddenNnLayerCount = (int) Math.sqrt(Math.pow((double) inputNeurons + outputNeurons, 2d));
 
 		// set network type
 		setNetworkType(NeuralNetworkType.MULTI_LAYER_PERCEPTRON);
-		// set input and output cells for network
-		NeuralNetworkFactory.setDefaultIO(this);
-
-		final SupervisedLearning learningRule = getLearningRule();
-		learningRule.setMaxError(1e-5);
-		learningRule.setLearningRate(.99);
-		learningRule.setMaxIterations(1000);
-		learningRule.addListener(learningEvent -> {
-			final SupervisedLearning rule = (SupervisedLearning) learningEvent.getSource();
-			LOGGER.info("Network error for interation " + rule.getCurrentIteration() + ": "
-					+ rule.getTotalNetworkError());
-		});
 
 		final NeuronProperties linearReductionLayerNnProp = new NeuronProperties();
 		linearReductionLayerNnProp.setProperty("useBias", true);
@@ -131,6 +113,14 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 		final Layer outputLayer = LayerFactory.createLayer(outputNeurons, linearReductionLayerNnProp);
 		this.addLayer(outputLayer);
 		ConnectionFactory.fullConnect(fourthHidden, outputLayer);
+
+		// set input and output cells for network
+		NeuralNetworkFactory.setDefaultIO(this);
+
+		final SupervisedLearning learningRule = getLearningRule();
+		learningRule.setMaxError(1e-5);
+		learningRule.setLearningRate(.99);
+		learningRule.setMaxIterations(1000);
 	}
 
 	public void setInput(final int inputVector[]) throws VectorSizeMismatchException {
@@ -143,25 +133,23 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 		}
 	}
 
-	public int[] getOutputAsInt() {
-		int i = 0;
-		final int[] output = new int[getOutputsCount()];
-		for (final Neuron ouputNeuron : getOutputNeurons()) {
-			final double out = ouputNeuron.getOutput();
-			this.output[i] = out;
-			output[i++] = (int) out;
-		}
-		return output;
-	}
-
 	/**
 	 * Learn from replayed Memory
 	 *
 	 * @param replayedMemory
 	 */
-	public void learn(final double[] futureState, final double reward) {
-		final DataSet trainingSet = new DataSet(inputNeurons, 1);
-		trainingSet.addRow(new DataSetRow(futureState, new double[] { reward }));
+	public void learn(final int[] input, final double[] desiredOutput) {
+		final DataSet trainingSet = new DataSet(getInputsCount(), getOutputsCount());
+		trainingSet.addRow(new DataSetRow(asDouble(input), desiredOutput));
 		learn(trainingSet);
+	}
+
+	private double[] asDouble(final int[] input) {
+		final double[] asDouble = new double[input.length];
+		int i = 0;
+		for (final int in : input) {
+			asDouble[i++] = in;
+		}
+		return asDouble;
 	}
 }

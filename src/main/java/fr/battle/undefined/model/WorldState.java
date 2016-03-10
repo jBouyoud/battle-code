@@ -15,11 +15,6 @@ import fr.battle.undefined.util.Constants;
 @RequiredArgsConstructor
 public class WorldState {
 
-	private static final int MAX_ROUND = 50;
-
-	private static final int MAP_WIDTH = 16;
-	private static final int MAP_HEIGHT = 13;
-
 	private static final int TILE_ME = 0x1000;
 	private static final int TILE_OPPONENT = 0x0100;
 	private static final int TILE_LOGO = 0x0010;
@@ -31,7 +26,7 @@ public class WorldState {
 	private final PlayerInfo me;
 
 	public int getRoundLeft() {
-		return MAX_ROUND - round;
+		return Constants.MAX_ROUND - round;
 	}
 
 	public PlayerInfo getPlayerInfo(final long teamId) {
@@ -70,7 +65,6 @@ public class WorldState {
 		if (PlayerState.STUNNED.equals(me.getState())) {
 			return .0d;
 		}
-		// TODO Gerer le stunned
 		double reward = .0d;
 		// Unauthorized actions
 		if (!a.isAllowed(this, me.getPlayer().getId())) {
@@ -94,20 +88,21 @@ public class WorldState {
 		final int[] world = new int[Constants.BOARD_SIZE + 1];
 		// Logo disponibles
 		for (final Position position : logos) {
-			world[position.getX() + position.getY() * MAP_WIDTH] |= TILE_LOGO;
+			world[position.getX() + position.getY() * Constants.MAP_WIDTH] |= TILE_LOGO;
 		}
 
 		for (final Map.Entry<Long, PlayerInfo> entry : playersState.entrySet()) {
 			final PlayerInfo playerInfo = entry.getValue();
 			// Caddy
-			world[playerInfo.getPlayer().getCaddy().getX() + playerInfo.getPlayer().getCaddy().getY() * MAP_WIDTH] |= TILE_CADDY;
+			world[playerInfo.getPlayer().getCaddy().getX() + playerInfo.getPlayer().getCaddy().getY()
+					* Constants.MAP_WIDTH] |= TILE_CADDY;
 
 			// Joueur
-			world[playerInfo.getPosition().getX() + playerInfo.getPosition().getY() * MAP_WIDTH] |= me
+			world[playerInfo.getPosition().getX() + playerInfo.getPosition().getY() * Constants.MAP_WIDTH] |= me
 					.equals(playerInfo) ? TILE_ME : TILE_OPPONENT;
 		}
 		// Nombre de tour restants
-		world[MAP_WIDTH * MAP_HEIGHT] = getRoundLeft();
+		world[Constants.BOARD_SIZE] = getRoundLeft();
 		return world;
 	}
 

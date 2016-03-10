@@ -19,6 +19,7 @@ public class NonSuckingRandomIA implements IA {
 
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see
 	 * fr.battle.undefined.IA#setWorldState(fr.battle.undefined.model.WorldState
 	 * )
@@ -30,11 +31,15 @@ public class NonSuckingRandomIA implements IA {
 
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see fr.battle.undefined.IA#getNextAction()
 	 */
 	@Override
 	public Action getNextAction() {
 		final List<Action> allowed = Action.allowed(ws, teamId);
+		if (allowed.size() == 0) {
+			return Action.values()[rand.nextInt(Action.values().length)];
+		}
 		return allowed.get(rand.nextInt(allowed.size()));
 	}
 
