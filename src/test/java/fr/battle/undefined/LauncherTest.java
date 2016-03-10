@@ -1,6 +1,7 @@
 package fr.battle.undefined;
 
 import java.io.IOException;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Properties;
@@ -11,10 +12,16 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
 
 import fr.battle.undefined.util.Constants;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * http://52.29.48.22:8080/
+ *
+ *
+ */
 @Slf4j
 public class LauncherTest {
 
@@ -26,10 +33,13 @@ public class LauncherTest {
 			URISyntaxException, InterruptedException {
 		LOGGER.info("Demarrage du client de test");
 
+		final SystemDefaultRoutePlanner routePlanner = new SystemDefaultRoutePlanner(
+				ProxySelector.getDefault());
 		// Creation la partie
 		try (
-				final CloseableHttpClient httpclient = HttpClients
-						.createDefault()) {
+				final CloseableHttpClient httpclient = HttpClients.custom()
+						.setRoutePlanner(routePlanner).build()) {
+
 			final URI uri = new URIBuilder().setScheme("http").setHost(SERVER
 					+ ":8080/test").setPath("/createBattle").setParameter(
 							"teamId", Long.toString(Constants.TEAMID))
@@ -40,9 +50,6 @@ public class LauncherTest {
 			final long gameId = Long.parseLong(httpclient.execute(httpget,
 					handler));
 			LOGGER.info("{}", gameId);
-			if (gameId == -1) {
-				return;
-			}
 
 			final Properties prop = new Properties();
 			prop.load(LauncherTest.class.getResourceAsStream(
@@ -75,6 +82,9 @@ public class LauncherTest {
 			// demarre
 			Thread.sleep(1000);
 
+			if (gameId == -1) {
+				return;
+			}
 			// Demarrage de la game
 			// http://xxxxxx:8080/test/startBattle?gameId=xxxx&teamId=10&secret=bobsecret
 			final URI startUri = new URIBuilder().setScheme("http").setHost(

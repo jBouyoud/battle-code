@@ -2,8 +2,8 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 
 repositories { 
-	mavenCentral()
-//	maven { url 'http://10.188.136.54:8082/content/groups/public/' }
+//	mavenCentral()
+	maven { url 'http://10.188.136.54:8082/content/groups/public/' }
 }
 
 // Default eclipse project configuration
@@ -65,5 +65,6 @@ dependencies {
 		'commons-codec:commons-codec:1.10',
 		'org.apache.httpcomponents:httpclient:4.5.2'
 	)
+	compile fileTree(dir: 'lib', include: '*.jar')
 	runtime 'org.slf4j:slf4j-log4j12:1.7.+'
 }

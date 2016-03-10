@@ -2,10 +2,10 @@ package fr.battle.undefined.ia;
 
 import java.util.Random;
 
-import lombok.NoArgsConstructor;
 import fr.battle.undefined.IA;
 import fr.battle.undefined.model.Action;
 import fr.battle.undefined.model.WorldState;
+import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 public class RandomIA implements IA {
@@ -38,8 +38,7 @@ public class RandomIA implements IA {
 	 */
 	@Override
 	public void setTeamId(final long teamId) {
-		// TODO Auto-generated method stub
-
+		// No Op
 	}
 
 }
