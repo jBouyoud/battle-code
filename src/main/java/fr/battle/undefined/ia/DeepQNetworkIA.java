@@ -2,8 +2,6 @@ package fr.battle.undefined.ia;
 
 import java.io.InputStream;
 
-import org.neuroph.core.NeuralNetwork;
-
 import fr.battle.undefined.IA;
 import fr.battle.undefined.ia.nn.BattleNN;
 import fr.battle.undefined.model.Action;
@@ -16,7 +14,8 @@ public class DeepQNetworkIA implements IA {
 	private static BattleNN nn;
 
 	public DeepQNetworkIA() {
-		final InputStream stream = DeepQNetworkIA.class.getResourceAsStream(NN_RESOURCE);
+		final InputStream stream = DeepQNetworkIA.class.getResourceAsStream(
+				NN_RESOURCE);
 		if (stream == null) {
 			nn = new BattleNN(836, 8);
 		} else {

@@ -1,40 +1,37 @@
 package fr.battle.undefined;
 
-import java.text.DecimalFormat;
-import java.util.Random;
+import java.io.IOException;
+import java.net.ProxySelector;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 
-/**
- * @author Kunuk Nykjaer
- */
-public class QLearning {
-	final DecimalFormat df = new DecimalFormat("#.##");
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
+import org.neuroph.core.NeuralNetwork;
+import org.neuroph.nnet.learning.BackPropagation;
+
+import fr.battle.undefined.ia.nn.BattleNN;
+import fr.battle.undefined.model.Action;
+import fr.battle.undefined.model.WorldState;
+import fr.battle.undefined.util.Constants;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class QLearning implements IA {
 
 	// path finding
-	final double alpha = 1;
-	final double gamma = 0.9;
-
-	// states A,B,C,D,E,F
-	// e.g. from A we can go to B or D
-	// from C we can only go to C
-	// C is goal state, reward 100 when B->C or F->C
-	//
-	// _______
-	// |A|B|C|
-	// |_____|
-	// |D|E|F|
-	// |_____|
-	//
-
-	final int stateA = 0;
-	final int stateB = 1;
-	final int stateC = 2;
-	final int stateD = 3;
-	final int stateE = 4;
-	final int stateF = 5;
-
-	final int statesCount = 6;
-	final int[] states = new int[] { stateA, stateB, stateC, stateD, stateE,
-			stateF };
+	private final double alpha = 1;
+	private final double gamma = 0.9;
 
 	// http://en.wikipedia.org/wiki/Q-learning
 	// http://people.revoledu.com/kardi/tutorial/ReinforcementLearning/Q-Learning.htm
@@ -42,42 +39,145 @@ public class QLearning {
 	// Q(s,a)= Q(s,a) + alpha * (R(s,a) + gamma * Max(next state, all actions) -
 	// Q(s,a))
 
-	int[][] R = new int[statesCount][statesCount]; // reward lookup
-
 	// Will be neural network
-	double[][] Q = new double[statesCount][statesCount]; // Q learning
+	private final static NeuralNetwork<BackPropagation> Q = new BattleNN(4
+			* 209, 8);
+	// World representation
+	private WorldState ws;
+	// Available actions
+	private final List<Action> actions = Arrays.asList(Action.EST,
+			Action.JUMP_EST, Action.JUMP_EST, Action.JUMP_NORD,
+			Action.JUMP_OUEST, Action.JUMP_SUD, Action.NORD, Action.OUEST,
+			Action.SUD);
+	private static final String SERVER = "52.29.48.22";
+	private static final long MAX_TEAM_ID = Constants.TEAMID + 6;
+	private static final int SOCKET_NUMBER = 2160;
 
-	int[] actionsFromA = new int[] { stateB, stateD };
-	int[] actionsFromB = new int[] { stateA, stateC, stateE };
-	int[] actionsFromC = new int[] { stateC };
-	int[] actionsFromD = new int[] { stateA, stateE };
-	int[] actionsFromE = new int[] { stateB, stateD, stateF };
-	int[] actionsFromF = new int[] { stateC, stateE };
-	int[][] actions = new int[][] { actionsFromA, actionsFromB, actionsFromC,
-			actionsFromD, actionsFromE, actionsFromF };
-
-	String[] stateNames = new String[] { "A", "B", "C", "D", "E", "F" };
-
-	public QLearning() {
-		init();
-	}
-
-	public void init() {
-		R[stateB][stateC] = 100; // from b to c
-		R[stateF][stateC] = 100; // from f to c
-	}
-
-	public static void main(final String[] args) {
+	public static void main(final String[] args) throws IOException,
+			URISyntaxException, InterruptedException {
+		LOGGER.info("Demarrage du client de test");
 
 		// Should start a party
-
-		final QLearning obj = new QLearning();
-		obj.run();
-		obj.printResult();
-		obj.showPolicy();
+		startGame(0L);
+		Q.save("trained.ia");
 	}
 
-	void run() {
+	/**
+	 * Start parti
+	 *
+	 */
+	private static void startGame(final long iaPosition) throws IOException,
+			URISyntaxException, InterruptedException {
+		final SystemDefaultRoutePlanner routePlanner = new SystemDefaultRoutePlanner(
+				ProxySelector.getDefault());
+		// Creation la partie
+		try (
+				final CloseableHttpClient httpclient = HttpClients.custom()
+						.setRoutePlanner(routePlanner).build()) {
+
+			final URI uri = new URIBuilder().setScheme("http").setHost(SERVER
+					+ ":8080/test").setPath("/createBattle").setParameter(
+							"teamId", Long.toString(Constants.TEAMID))
+					.setParameter("secret", Constants.SECRET).build();
+
+			final HttpGet httpget = new HttpGet(uri);
+			final ResponseHandler<String> handler = new BasicResponseHandler();
+			final long gameId = Long.parseLong(httpclient.execute(httpget,
+					handler));
+			LOGGER.info("{}", gameId);
+
+			final Properties prop = new Properties();
+			prop.load(LauncherTest.class.getResourceAsStream(
+					"/test.properties"));
+
+			final String[] ias = prop.getProperty("ias").split(",");
+
+			// Creation des joueurs et leur enregistrement a la partie
+			for (long i = Constants.TEAMID; i < MAX_TEAM_ID; i++) {
+				final long teamId = i;
+				final String className = ias[(int) (i - Constants.TEAMID)];
+				if (i != iaPosition) {
+
+					new Thread(() -> {
+						try {
+
+							new Client(SERVER, teamId, SOCKET_NUMBER, gameId,
+									(IA) Class.forName(className).newInstance())
+											.init(1).start();
+
+						} catch (InstantiationException | IllegalAccessException
+								| ClassNotFoundException
+								| InterruptedException e) {
+							e.printStackTrace();
+						}
+					}).start();
+				} else {
+					new Thread(() -> {
+						try {
+							new Client(SERVER, teamId, SOCKET_NUMBER, gameId,
+									QLearning.class.newInstance()).init(1)
+											.start();
+						} catch (InstantiationException | IllegalAccessException
+								| InterruptedException e) {
+							e.printStackTrace();
+						}
+					}).start();
+				}
+			}
+
+			// On attend une seconde pour être ser que les threads ont bien
+			// demarre
+			Thread.sleep(1000);
+			if (gameId == -1) {
+				return;
+			}
+			// Demarrage de la game
+			// http://xxxxxx:8080/test/startBattle?gameId=xxxx&teamId=10&secret=bobsecret
+			final URI startUri = new URIBuilder().setScheme("http").setHost(
+					SERVER + ":8080").setPath("/test/startBattle").setParameter(
+							"gameId", Long.toString(gameId)).setParameter(
+									"teamId", Long.toString(Constants.TEAMID))
+					.setParameter("secret", Constants.SECRET).build();
+
+			final HttpGet startGet = new HttpGet(startUri);
+			final ResponseHandler<String> handler2 = new BasicResponseHandler();
+			httpclient.execute(startGet, handler2);
+
+			// Pour voir le jeu
+			LOGGER.info(
+					"To Stop the battle : http://{}:8080/test/stopBattle?gameId={}&teamId={}&secret={}",
+					new Object[] { SERVER, gameId, Constants.TEAMID,
+							Constants.SECRET });
+
+			System.in.read();
+
+			final URI stopUri = new URIBuilder().setScheme("http").setHost(
+					SERVER + ":8080").setPath("/test/stopBattle").setParameter(
+							"gameId", Long.toString(gameId)).setParameter(
+									"teamId", Long.toString(Constants.TEAMID))
+					.setParameter("secret", Constants.SECRET).build();
+
+			final HttpGet stopGet = new HttpGet(stopUri);
+			final ResponseHandler<String> handler3 = new BasicResponseHandler();
+			httpclient.execute(stopGet, handler3);
+			// http://xxxxxx:8080/?gameId=votre game Id
+		}
+
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see fr.battle.undefined.IA#getNextAction()
+	 */
+	@Override
+	public Action getNextAction() {
+		// Train neural network
+		run();
+		// Return best action
+		return null;
+	}
+
+	private double run() {
 		/*
 		 * 1. Set parameter , and environment reward matrix R 2. Initialize
 		 * matrix Q as zero matrix 3. For each episode: Select random initial
@@ -87,107 +187,59 @@ public class QLearning {
 		 * based on all possible actions o Compute o Set the next state as the
 		 * current state
 		 */
+		final Map<Action, Double> results = new HashMap<>();
+		Q.setInput(ws.getWorld());
+		final double[] result = Q.getOutput();
 
-		// For each episode
-		final Random rand = new Random();
-		for (int i = 0; i < 50; i++) { // train episodes
-			// Select random initial state
-			int state = rand.nextInt(statesCount);
-			while (state != stateC) // goal state
-			{
-				// Select one among all possible actions for the current state
-				final int[] actionsFromState = actions[state];
-
-				// Selection strategy is random in this example
-				final int index = rand.nextInt(actionsFromState.length);
-				// Appelé le NN courant pour avoir l'action (max des stats) (pas
-				// de learning) TODO fa
-				final int action = actionsFromState[index];
-
-				// Pour chaque action calculé le r et le s'
-				// final Map<Action, Double> results = Q(state, action);
-				// MaxQ = max value de result
-				// Caclculé le reward pour cete action
-
-				// Action outcome is set to deterministic in this example
-				// Transition probability is 1
-				final int nextState = action; // data structure
-
-				// Using this possible action, consider to go to the next state
-
-				// pour chaque S' appelé Q avec
-				final double q = Q(state, action);
-				final double maxQ = maxQ(nextState);
-				final int r = R(state, action);
-				// voir pour le alpha à 1
-				final double value = q + alpha * (r + gamma * maxQ - q);
-				setQ(state, action, value);
-
-				// Set the next state as the current state
-				state = nextState;
-			}
+		for (int i = 0; i < actions.size(); i++) {
+			results.put(actions.get(i), result[i]);
 		}
-	}
 
-	double maxQ(final int s) {
-		final int[] actionsFromState = actions[s];
-		double maxValue = Double.MIN_VALUE;
-		for (final int nextState : actionsFromState) {
-			final double value = Q[s][nextState];
+		final Action maxQ = results.entrySet().stream().max((a, b) -> a
+				.getValue().compareTo(b.getValue())).get().getKey();
 
-			if (value > maxValue) {
-				maxValue = value;
-			}
+		// Choose actions using epsilon greedy
+		final Action nextAct = Utils.getAction(maxQ, actions);
+
+		// Update world with the future of our actions
+		Q.setInput(ws.getFutureWorld(nextAct));
+		Q.calculate();
+		final Map<Action, Double> futureResults = new HashMap<>();
+		final double[] futureResult = Q.getOutput();
+		// pour chaque S' appelé Q avec
+		for (int i = 0; i < actions.size(); i++) {
+			results.put(actions.get(i), result[i]);
 		}
-		return maxValue;
+		final Action futureMaxQ = results.entrySet().stream().max((a, b) -> a
+				.getValue().compareTo(b.getValue())).get().getKey();
+
+		// TODO caclculate reward with future world
+		final int r = ws.getReward(maxQ);
+		// voir pour le alpha à 1
+		final double value = r + gamma * maxQ;
+		setQ(ws.getWorld(), nextAct, value);
 	}
 
-	// get policy from state
-	int policy(final int state) {
-		final int[] actionsFromState = actions[state];
-		double maxValue = Double.MIN_VALUE;
-		int policyGotoState = state; // default goto self if not found
-		for (final int nextState : actionsFromState) {
-			final double value = Q[state][nextState];
-
-			if (value > maxValue) {
-				maxValue = value;
-				policyGotoState = nextState;
-			}
-		}
-		return policyGotoState;
+	private void setQ(final int s, final int a, final double value) {
+		// TODO update neural network with value
 	}
 
-	double Q(final int s, final int a) {
-		return Q[s][a];
+	/*
+	 * (non-Javadoc)
+	 * @see fr.battle.undefined.IA#setTeamId(long)
+	 */
+	@Override
+	public void setTeamId(final long teamId) {
+		// Nothing to do here
 	}
 
-	void setQ(final int s, final int a, final double value) {
-		Q[s][a] = value;
-	}
-
-	int R(final int s, final int a) {
-		return R[s][a];
-	}
-
-	void printResult() {
-		System.out.println("Print result");
-		for (int i = 0; i < Q.length; i++) {
-			System.out.print("out from " + stateNames[i] + ":  ");
-			for (int j = 0; j < Q[i].length; j++) {
-				System.out.print(df.format(Q[i][j]) + " ");
-			}
-			System.out.println();
-		}
-	}
-
-	// policy is maxQ(states)
-	void showPolicy() {
-		System.out.println("\nshowPolicy");
-		for (final int from : states) {
-			final int to = policy(from);
-			System.out.println("from " + stateNames[from] + " goto "
-					+ stateNames[to]);
-		}
+	/*
+	 * (non-Javadoc)
+	 * @see fr.battle.undefined.IA#setWorldState(fr.battle.undefined.model.
+	 * WorldState)
+	 */
+	@Override
+	public void setWorldState(final WorldState ws) {
+		this.ws = ws;
 	}
 }
