@@ -1,7 +1,6 @@
 package fr.battle.undefined.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import fr.battle.undefined.model.WorldState.PlayerInfo;
@@ -15,12 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 @ToString
 @RequiredArgsConstructor
 public enum Action {
-	NORD(0, "N", false, 0, -1), SUD(1, "S", false, 0, 1), EST(2, "E", false, 1,
-			0), OUEST(3, "O", false, -1, 0), JUMP_NORD(4, "JN", true, 0,
-					-2), JUMP_SUD(5, "JS", true, 0, 2), JUMP_EST(6, "JE", true,
-							2, 0), JUMP_OUEST(7, "JO", true, -2, 0);
+	NORD("N", false, 0, -1), SUD("S", false, 0, 1), EST("E", false, 1,
+			0), OUEST("O", false, -1, 0), JUMP_NORD("JN", true, 0,
+					-2), JUMP_SUD("JS", true, 0, 2), JUMP_EST("JE", true, 2,
+							0), JUMP_OUEST("JO", true, -2, 0);
 
-	private final int id;
 	private final String code;
 	private final boolean isSuperPower;
 	private final int dx;
@@ -87,14 +85,5 @@ public enum Action {
 			}
 		}
 		return allowed;
-	}
-
-	/**
-	 * Return an action by its id
-	 *
-	 */
-	public static Action getById(final int id) {
-		return Arrays.stream(values()).filter(a -> id == a.getId()).findFirst()
-				.get();
 	}
 }

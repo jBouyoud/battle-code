@@ -1,6 +1,7 @@
 package fr.battle.undefined.ia;
 
 import java.io.InputStream;
+import java.util.Arrays;
 
 import org.neuroph.core.NeuralNetwork;
 
@@ -21,6 +22,8 @@ public class DeepQNetworkIA implements IA {
 
 	private WorldState ws;
 
+	protected int[] history = new int[836];
+
 	public DeepQNetworkIA() {
 		final InputStream stream = DeepQNetworkIA.class.getResourceAsStream(
 				NN_RESOURCE);
@@ -29,6 +32,7 @@ public class DeepQNetworkIA implements IA {
 		} else {
 			nn = (BattleNN) NeuralNetwork.load(stream);
 		}
+		Arrays.fill(history, 0);
 	}
 
 	public void save() {
@@ -41,7 +45,7 @@ public class DeepQNetworkIA implements IA {
 	 */
 	@Override
 	public void setTeamId(final long teamId) {
-
+		// Nothing to do here
 	}
 
 	@Override
@@ -51,7 +55,13 @@ public class DeepQNetworkIA implements IA {
 
 	@Override
 	public Action getNextAction() {
-		nn.setInput(ws.getAsArray());
+		// Update history
+		// Shift old screen
+		System.arraycopy(history, 836 / 4 - 1, history, 0, 836 - 836 / 4 - 1);
+		// Add new frame
+		System.arraycopy(ws.getAsArray(), 0, history, 836 / 3 - 1, ws
+				.getAsArray().length);
+		nn.setInput(history);
 		nn.calculate();
 		final double[] results = nn.getOutput();
 		// Get index of max value
@@ -63,8 +73,8 @@ public class DeepQNetworkIA implements IA {
 				refValue = results[i];
 			}
 		}
-		// final int actionIndex = ;
-		return Action.getById(actionIndex);
+
+		return Action.values()[actionIndex];
 	}
 
 }
