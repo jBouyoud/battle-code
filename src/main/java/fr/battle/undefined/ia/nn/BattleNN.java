@@ -1,9 +1,13 @@
 package fr.battle.undefined.ia.nn;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.neuroph.core.Layer;
 import org.neuroph.core.NeuralNetwork;
+import org.neuroph.core.Neuron;
 import org.neuroph.core.data.DataSet;
 import org.neuroph.core.data.DataSetRow;
+import org.neuroph.core.exceptions.VectorSizeMismatchException;
 import org.neuroph.core.learning.SupervisedLearning;
 import org.neuroph.core.transfer.Linear;
 import org.neuroph.core.transfer.RectifiedLinear;
@@ -17,8 +21,6 @@ import org.neuroph.util.NeuralNetworkType;
 import org.neuroph.util.NeuronProperties;
 import org.neuroph.util.TransferFunctionType;
 import org.neuroph.util.random.RangeRandomizer;
-
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * http://www.nervanasys.com/demystifying-deep-reinforcement-learning/
@@ -58,8 +60,7 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 		this.inputNeurons = inputNeurons;
 		this.outputNeurons = outputNeurons;
 
-		final int hiddenNnLayerCount = (int) Math.sqrt(Math.pow(
-				(double) inputNeurons + outputNeurons, 2d));
+		final int hiddenNnLayerCount = (int) Math.sqrt(Math.pow((double) inputNeurons + outputNeurons, 2d));
 
 		// set network type
 		setNetworkType(NeuralNetworkType.MULTI_LAYER_PERCEPTRON);
@@ -71,21 +72,17 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 		learningRule.setLearningRate(.99);
 		learningRule.setMaxIterations(1000);
 		learningRule.addListener(learningEvent -> {
-			final SupervisedLearning rule = (SupervisedLearning) learningEvent
-					.getSource();
-			LOGGER.info("Network error for interation " + rule
-					.getCurrentIteration() + ": " + rule
-							.getTotalNetworkError());
+			final SupervisedLearning rule = (SupervisedLearning) learningEvent.getSource();
+			LOGGER.info("Network error for interation " + rule.getCurrentIteration() + ": "
+					+ rule.getTotalNetworkError());
 		});
 
 		final NeuronProperties linearReductionLayerNnProp = new NeuronProperties();
 		linearReductionLayerNnProp.setProperty("useBias", true);
-		linearReductionLayerNnProp.setProperty("transferFunction",
-				TransferFunctionType.LINEAR);
+		linearReductionLayerNnProp.setProperty("transferFunction", TransferFunctionType.LINEAR);
 
 		final NeuronProperties maxLayerNnProp = new NeuronProperties();
-		linearReductionLayerNnProp.setProperty("transferFunction",
-				RectifiedLinear.class);
+		linearReductionLayerNnProp.setProperty("transferFunction", RectifiedLinear.class);
 
 		// local n_hid = 128
 		// local mlp = nn.Sequential()
@@ -103,42 +100,58 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 		randomizeWeights(new RangeRandomizer(-0.7, 0.7));
 
 		// create input layer
-		final Layer inputLayer = LayerFactory.createLayer(inputNeurons,
-				new NeuronProperties(InputNeuron.class, Linear.class));
+		final Layer inputLayer = LayerFactory.createLayer(inputNeurons, new NeuronProperties(InputNeuron.class,
+				Linear.class));
 		this.addLayer(inputLayer);
 
 		// 1nd layer linear reduction
-		final Layer firstHidden = LayerFactory.createLayer(hiddenNnLayerCount,
-				linearReductionLayerNnProp);
+		final Layer firstHidden = LayerFactory.createLayer(hiddenNnLayerCount, linearReductionLayerNnProp);
 		firstHidden.addNeuron(new BiasNeuron());
 		this.addLayer(firstHidden);
 		ConnectionFactory.fullConnect(inputLayer, firstHidden);
 
 		// 2nd layer max(0,x)
-		final Layer secondHidden = LayerFactory.createLayer(hiddenNnLayerCount,
-				maxLayerNnProp);
+		final Layer secondHidden = LayerFactory.createLayer(hiddenNnLayerCount, maxLayerNnProp);
 		this.addLayer(secondHidden);
 		ConnectionFactory.fullConnect(firstHidden, secondHidden);
 
 		// 3rd layer linear reduction
-		final Layer thirdHidden = LayerFactory.createLayer(hiddenNnLayerCount,
-				linearReductionLayerNnProp);
+		final Layer thirdHidden = LayerFactory.createLayer(hiddenNnLayerCount, linearReductionLayerNnProp);
 		thirdHidden.addNeuron(new BiasNeuron());
 		this.addLayer(thirdHidden);
 		ConnectionFactory.fullConnect(secondHidden, thirdHidden);
 
 		// 4th layer max(0,x)
-		final Layer fourthHidden = LayerFactory.createLayer(hiddenNnLayerCount,
-				maxLayerNnProp);
+		final Layer fourthHidden = LayerFactory.createLayer(hiddenNnLayerCount, maxLayerNnProp);
 		this.addLayer(fourthHidden);
 		ConnectionFactory.fullConnect(thirdHidden, fourthHidden);
 
 		// OutputLayer
 		linearReductionLayerNnProp.setProperty("useBias", false);
-		final Layer outputLayer = LayerFactory.createLayer(outputNeurons,
-				linearReductionLayerNnProp);
+		final Layer outputLayer = LayerFactory.createLayer(outputNeurons, linearReductionLayerNnProp);
 		this.addLayer(outputLayer);
 		ConnectionFactory.fullConnect(fourthHidden, outputLayer);
+	}
+
+	public void setInput(final int inputVector[]) throws VectorSizeMismatchException {
+		if (inputVector.length != getInputsCount()) {
+			throw new VectorSizeMismatchException("Input vector size does not match network input dimension!");
+		}
+		int i = 0;
+		for (final Neuron neuron : getInputNeurons()) {
+			neuron.setInput(inputVector[i++]);
+		}
+	}
+
+	public int[] getOutputAsInt() {
+		int i = 0;
+		final int[] output = new int[getOutputsCount()];
+		for (final Neuron ouputNeuron : getOutputNeurons()) {
+			final double out = ouputNeuron.getOutput();
+			this.output[i] = out;
+			output[i++] = (int) out;
+		}
+		return output;
 	}
 
 	/**
@@ -148,8 +161,7 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 	 */
 	public void learn(final double[] futureState, final double reward) {
 		final DataSet trainingSet = new DataSet(inputNeurons, 1);
-		trainingSet.addRow(new DataSetRow(futureState, new double[] {
-				reward }));
+		trainingSet.addRow(new DataSetRow(futureState, new double[] { reward }));
 		learn(trainingSet);
 	}
 }
