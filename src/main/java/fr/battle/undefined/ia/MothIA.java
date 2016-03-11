@@ -3,16 +3,12 @@ package fr.battle.undefined.ia;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import fr.battle.undefined.IA;
 import fr.battle.undefined.model.Action;
 import fr.battle.undefined.model.Position;
 import fr.battle.undefined.model.WorldState;
 import fr.battle.undefined.model.WorldState.PlayerInfo;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -24,6 +20,7 @@ public class MothIA implements IA {
 	private static double slapRatio = 1d;
 	private static double pickRatio = 1d;
 	private static double dropRation = 1d;
+	private static double uncertaintyRatio = 0.9d;
 
 	Map<Long, Long> lastSlappedMemory = new HashMap<>();
 
@@ -54,15 +51,15 @@ public class MothIA implements IA {
 
 		Action bestAction = null;
 		double bestActionReward = Double.MIN_VALUE;
+		final Long bestActionSlapperVictims = null;
 
 		final List<Action> allowedActions = Action.allowed(ws, teamId);
-		// final Map<Long, PlayerInfo> players = ws.getPlayersState();
 
-		LOGGER.info("Number of possible actions: " + allowedActions.size());
+		LOGGER.debug("Number of possible actions: " + allowedActions.size());
 
 		for (final Action action : allowedActions) {
 
-			LOGGER.info("Start processionc action " + action.getCode());
+			LOGGER.debug("Start processionc action " + action.getCode());
 
 			final Position nextPosition = new Position(currentPosition.getX() + action.getDx(),
 					currentPosition.getY() + action.getDy());
@@ -72,21 +69,30 @@ public class MothIA implements IA {
 			final double dropRatioed = dropRation * computeDropReward(nextPosition);
 			final double totalReward = slapRatioed + pickRatioed + dropRatioed;
 
-			LOGGER.info("Action " + action.getCode());
-			LOGGER.info("Slap " + slapRatioed);
-			LOGGER.info("Pick " + pickRatioed);
-			LOGGER.info("Drop " + dropRatioed);
-			LOGGER.info("Total " + totalReward);
-			LOGGER.info("####################################################");
+			LOGGER.debug("Action " + action.getCode());
+			LOGGER.debug("Slap " + slapRatioed);
+			LOGGER.debug("Pick " + pickRatioed);
+			LOGGER.debug("Drop " + dropRatioed);
+			LOGGER.debug("Total " + totalReward);
+			LOGGER.debug("####################################################");
 
 			if (bestActionReward < totalReward) {
 				bestAction = action;
 				bestActionReward = totalReward;
+
+				// Compute slapped victims
+				ws.getSlappedPlayers(nextPosition).findFirst();
+				if (ws.getSlappedPlayers(nextPosition).count() != 0) {
+					lastSlappedMemory.put(ws.getMe().getPlayer().getId(),
+							ws.getSlappedPlayers(nextPosition).findFirst().get().getPlayer().getId());
+				}
+
 				LOGGER.info("Action is elected as best");
 			}
 		}
+
 		if (bestAction == null) {
-			LOGGER.info("No action found, using NORTH as default");
+			LOGGER.warn("No action found, using NORTH as default");
 			bestAction = Action.NORD;
 		}
 
@@ -117,7 +123,7 @@ public class MothIA implements IA {
 			}
 
 			final double distance = tilesDistance(nextPosition, victim.getPosition());
-			final double localReward = 2d / distance;
+			final double localReward = distance <= ws.getRoundLeft() ? 2d / distance * uncertaintyRatio : 0;
 			reward += localReward;
 
 			LOGGER.debug("Slap reward detail:");
@@ -146,7 +152,7 @@ public class MothIA implements IA {
 				if (!ws.isLogoInCaddy(position)) {
 
 					final double distance = tilesDistance(nextPosition, position);
-					final double localReward = 1d / distance;
+					final double localReward = distance <= ws.getRoundLeft() ? 1d / distance * uncertaintyRatio : 0;
 					reward += localReward;
 
 					LOGGER.debug("Pick reward detail:");
@@ -174,14 +180,12 @@ public class MothIA implements IA {
 		if (ws.isCarrying(ws.getMe().getPlayer().getId())) {
 			LOGGER.debug("I am carying!");
 
-			// TODO use real caddi position
-			final double distance = tilesDistance(new Position(1, 5), nextPosition);
+			final double distance = tilesDistance(ws.getMe().getPlayer().getCaddy(), nextPosition);
 
 			final double localReward = 30d / distance;
 			reward += localReward;
 
 			LOGGER.debug("Drop reward detail:");
-			// LOGGER.debug("Logo:" + position);
 			LOGGER.debug("Distance:" + distance);
 			LOGGER.debug("Local Reward:" + localReward);
 			LOGGER.debug("Sum Reward:" + reward);
@@ -190,10 +194,9 @@ public class MothIA implements IA {
 			for (final Position position : ws.getLogos()) {
 				if (!ws.isLogoInCaddy(position)) {
 
-					// TODO use real caddi position
-					final double distance = tilesDistance(new Position(1, 5), position)
+					final double distance = tilesDistance(ws.getMe().getPlayer().getCaddy(), position)
 							+ tilesDistance(nextPosition, position);
-					final double localReward = 30d / distance;
+					final double localReward = distance <= ws.getRoundLeft() ? 30d / distance * uncertaintyRatio : 0;
 					reward += localReward;
 
 					LOGGER.debug("Drop reward detail:");
@@ -219,25 +222,4 @@ public class MothIA implements IA {
 	private int tilesDistance(final Position p1, final Position p2) {
 		return Math.abs(p1.getX() - p2.getX()) + Math.abs(p1.getY() - p2.getY());
 	}
-
-	/**
-	 * Internal class used to find closest logo to catch up
-	 */
-	@Getter
-	@RequiredArgsConstructor
-	private static class Distance {
-		private final Position position;
-		private final double distance;
-	}
-
-	private Optional<Distance> getClosestPosition(@NonNull final Position currentPosition) {
-		// TODO that is not the nearest of an other player
-		// TODO remove logo too far away
-		return ws.getLogos().parallelStream().filter(logo -> !ws.isCarredBySomeone(logo))
-				.filter(logo -> !ws.isLogoInCaddy(logo)).map(p -> {
-					final double distance = tilesDistance(currentPosition, p);
-					return new Distance(p, distance);
-				}).min((a, b) -> Double.compare(a.getDistance(), b.getDistance()));
-	}
-
 }

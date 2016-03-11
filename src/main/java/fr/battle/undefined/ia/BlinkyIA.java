@@ -83,9 +83,9 @@ public class BlinkyIA implements IA {
 			LOGGER.info("New victim found: " + victim.getPlayer().getId() + ", distance: " + bestVictimDistance);
 		}
 
-		if (bestVictim.equals(null)) {
+		if (bestVictim == null) {
 			LOGGER.warn("Unable to find a victim");
-			return null;
+			return Action.NORD;
 		}
 
 		if (bestVictimDistance == 2) {
