@@ -10,4 +10,8 @@ public interface IA {
 	void setWorldState(WorldState ws);
 
 	Action getNextAction();
+
+	default void afterAction() {
+		// No operation
+	}
 }

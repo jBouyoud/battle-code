@@ -49,9 +49,7 @@ public class Position {
 	 * @return <code>true</code> if it is, <code>false</code> else
 	 */
 	public boolean isInMap() {
-		return getX() >= Constants.ORIGIN.getX()
-				&& getX() <= Constants.END_OF_MAP.getX()
-				&& getY() >= Constants.ORIGIN.getY()
-				&& getY() <= Constants.END_OF_MAP.getY();
+		return getX() >= Constants.ORIGIN.getX() && getX() <= Constants.END_OF_MAP.getX()
+				&& getY() >= Constants.ORIGIN.getY() && getY() <= Constants.END_OF_MAP.getY();
 	}
 }

@@ -1,5 +1,6 @@
 package fr.battle.undefined;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -9,6 +10,7 @@ import fr.battle.undefined.ia.DeepQNetworkIA;
 import fr.battle.undefined.ia.NonSuckingRandomIA;
 import fr.battle.undefined.ia.RandomIA;
 import fr.battle.undefined.ia.SprintRunner;
+import fr.battle.undefined.ia.TrainingDeepQNetworkIA;
 import fr.battle.undefined.util.Constants;
 
 @Slf4j
@@ -29,12 +31,12 @@ public class DQLTrainningProgramm {
 
 	private static final Random rand = new Random();
 
-	private static final int MAX_ITERATION = 1000;
+	private static final int MAX_ITERATION = 1;
 
 	public static void main(final String[] args) throws Exception {
 		LOGGER.info("Demarrage du client de test");
 
-		final DeepQNetworkIA dql = new DeepQNetworkIA();
+		final DeepQNetworkIA dql = new TrainingDeepQNetworkIA();
 
 		try (RestClient restClient = new RestClient(LauncherTest.SERVER)) {
 			for (int i = 0; i < MAX_ITERATION; ++i) {
@@ -55,7 +57,7 @@ public class DQLTrainningProgramm {
 			// Creation des joueurs et leur enregistrement a la partie
 			Client dqlClient = null;
 			final int dqlIdx = rand.nextInt((int) (LauncherTest.MAX_TEAM_ID - Constants.TEAMID));
-			final List<Class<? extends IA>> ias = Arrays.asList(OTHER_IAS.clone());
+			final List<Class<? extends IA>> ias = new ArrayList<>(Arrays.asList(OTHER_IAS.clone()));
 			for (long i = Constants.TEAMID; i < LauncherTest.MAX_TEAM_ID; i++) {
 				final long teamId = i;
 				IA ia = null;
@@ -82,6 +84,7 @@ public class DQLTrainningProgramm {
 			if (dqlClient == null) {
 				return;
 			}
+			Thread.sleep(2000);
 			// Demarrage de la game
 			restClient.startGame(gameId);
 			while (!dqlClient.isEnded()) {

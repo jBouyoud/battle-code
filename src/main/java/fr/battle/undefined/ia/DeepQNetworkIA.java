@@ -23,6 +23,7 @@ public class DeepQNetworkIA implements IA {
 	protected static final int OUTPUT_SIZE = Action.values().length;
 
 	protected WorldState ws;
+	protected long teamId;
 
 	protected final int[] history = new int[STATE_SIZE];
 
@@ -41,12 +42,12 @@ public class DeepQNetworkIA implements IA {
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see fr.battle.undefined.IA#setTeamId(long)
 	 */
 	@Override
 	public void setTeamId(final long teamId) {
-		// Nothing to do here
+		this.teamId = teamId;
 	}
 
 	@Override
@@ -58,29 +59,29 @@ public class DeepQNetworkIA implements IA {
 	public Action getNextAction() {
 		// Update history
 		updateToNewState(history);
-		return getNextActionFrom(history);
-	}
-
-	protected Action getNextActionFrom(final int[] input) {
 		nn.setInput(history);
 		nn.calculate();
 		final double[] results = nn.getOutput();
+		return Action.values()[maxQIdx(results)];
+	}
+
+	protected int maxQIdx(final double[] output) {
 		// Get index of max value
 		int actionIndex = 0;
 		double refValue = Double.MIN_VALUE;
-		for (int i = 0; i < results.length; i++) {
-			if (results[i] > refValue) {
+		for (int i = 0; i < output.length; i++) {
+			if (output[i] > refValue) {
 				actionIndex = i;
-				refValue = results[i];
+				refValue = output[i];
 			}
 		}
-		return Action.values()[actionIndex];
+		return actionIndex;
 	}
 
 	protected void updateToNewState(final int[] state) {
 		// Shift old screen
-		System.arraycopy(state, STATE_SIZE / HISTORY_LENGTH - 1, state, 0, STATE_SIZE - STATE_SIZE / HISTORY_LENGTH - 1);
+		System.arraycopy(state, SIZE, state, 0, (HISTORY_LENGTH - 1) * SIZE);
 		// Add new frame
-		System.arraycopy(ws.getAsArray(), 0, state, STATE_SIZE / (HISTORY_LENGTH - 1) - 1, SIZE);
+		System.arraycopy(ws.getAsArray(), 0, state, (HISTORY_LENGTH - 1) * SIZE, SIZE);
 	}
 }

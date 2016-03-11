@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 import fr.battle.undefined.util.Constants;
 
@@ -65,7 +66,7 @@ public class WorldState {
 		if (PlayerState.STUNNED.equals(me.getState())) {
 			return .0d;
 		}
-		double reward = .0d;
+		double reward = .001d;
 		// Unauthorized actions
 		if (!a.isAllowed(this, me.getPlayer().getId())) {
 			reward += -5d;
@@ -107,14 +108,23 @@ public class WorldState {
 	}
 
 	@Getter
+	@Setter
 	@ToString
 	@RequiredArgsConstructor
 	public static final class PlayerInfo {
 		private final Player player;
-		private final Position position;
-		private final int score;
-		private final PlayerState state;
+		private Position position;
+		private int score;
+		private PlayerState state;
 		private final List<Player> lastSlaped = new ArrayList<>();
+
+		public PlayerInfo(final Player player, final Position position, final int score, final PlayerState state) {
+			super();
+			this.player = player;
+			this.position = position;
+			this.score = score;
+			this.state = state;
+		}
 
 		/**
 		 * Indique si le joueur est sur son caddy

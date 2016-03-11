@@ -7,6 +7,8 @@ public abstract class Constants {
 	public static final long TEAMID = 160;
 	public static final String SECRET = "P2389D8FKL";
 
+	public static final int PLAYERS_COUNT = 6;
+
 	public static final int MAX_ROUND = 50;
 
 	public static final int MAP_WIDTH = 16;// x

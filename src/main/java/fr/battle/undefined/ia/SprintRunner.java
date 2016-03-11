@@ -4,6 +4,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.lang3.tuple.Pair;
 
 import fr.battle.undefined.IA;
@@ -11,10 +16,6 @@ import fr.battle.undefined.model.Action;
 import fr.battle.undefined.model.Player;
 import fr.battle.undefined.model.Position;
 import fr.battle.undefined.model.WorldState;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class SprintRunner implements IA {
@@ -29,6 +30,7 @@ public class SprintRunner implements IA {
 
 	/*
 	 * (non-Javadoc)
+	 *
 	 * @see fr.battle.undefined.IA#setWorldState(fr.battle.undefined.model.
 	 * WorldState)
 	 */
@@ -39,6 +41,7 @@ public class SprintRunner implements IA {
 
 	/*
 	 * (non-Javadoc)
+	 *
 	 * @see fr.battle.undefined.IA#getNextAction()
 	 */
 	@Override
@@ -52,8 +55,7 @@ public class SprintRunner implements IA {
 		} else {
 			// Get closest
 			// TODO If no more logo in game.... Slape other dude
-			final Optional<Distance> potentialTarget = getClosestPosition(
-					currentPosition);
+			final Optional<Distance> potentialTarget = getClosestPosition(currentPosition);
 			if (potentialTarget.isPresent()) {
 				target = potentialTarget.get().getPosition();
 			} else {
@@ -61,21 +63,19 @@ public class SprintRunner implements IA {
 			}
 		}
 
-		final Optional<Pair<Action, Double>> bestAction = getPossibleActionsToPerform(
-				currentPosition, target).stream()
-						// Restrict to allowed actions
-						.filter(a -> a.isAllowed(ws, teamId))
-						// Retreive next position for all actions
-						.map(a -> Pair.of(a, ws.getReward(a)))
-						// Get the best one
-						.max((a, b) -> a.getValue().compareTo(b.getValue()));
+		final Optional<Pair<Action, Double>> bestAction = getPossibleActionsToPerform(currentPosition, target).stream()
+		// Restrict to allowed actions
+				.filter(a -> a.isAllowed(ws, teamId))
+				// Retreive next position for all actions
+				.map(a -> Pair.of(a, ws.getReward(a)))
+				// Get the best one
+				.max((a, b) -> a.getValue().compareTo(b.getValue()));
 
 		if (!bestAction.isPresent()) {
-			LOGGER.info("Unable to find any action");
+			LOGGER.trace("Unable to find any action");
 			return null;
 		}
-		LOGGER.info("target {}, actions: {}", target, bestAction.get()
-				.getKey());
+		LOGGER.trace("target {}, actions: {}", target, bestAction.get().getKey());
 		return bestAction.get().getKey();
 	}
 
@@ -86,20 +86,16 @@ public class SprintRunner implements IA {
 	 *            current position
 	 * @return position of the closest logo
 	 */
-	private Optional<Distance> getClosestPosition(
-			@NonNull final Position currentPosition) {
+	private Optional<Distance> getClosestPosition(@NonNull final Position currentPosition) {
 		// TODO that is not the nearest of an other player
 		// TODO remove logo too far away
-		return ws.getLogos().parallelStream().filter(logo -> !ws
-				.isCarredBySomeone(logo)).filter(logo -> !ws.isLogoInCaddy(
-						logo)).map(p -> {
-							final double distance = Math.sqrt(Math.pow(Math.abs(
-									currentPosition.getX() - p.getX()), 2)
-									+ Math.pow(Math.abs(currentPosition.getY()
-											- p.getY()), 2));
-							return new Distance(p, distance);
-						}).min((a, b) -> Double.compare(a.getDistance(), b
-								.getDistance()));
+		return ws.getLogos().parallelStream().filter(logo -> !ws.isCarredBySomeone(logo)).filter(
+				logo -> !ws.isLogoInCaddy(logo)).map(
+				p -> {
+					final double distance = Math.sqrt(Math.pow(Math.abs(currentPosition.getX() - p.getX()), 2)
+							+ Math.pow(Math.abs(currentPosition.getY() - p.getY()), 2));
+					return new Distance(p, distance);
+				}).min((a, b) -> Double.compare(a.getDistance(), b.getDistance()));
 	}
 
 	/**
@@ -112,10 +108,8 @@ public class SprintRunner implements IA {
 	 *            objective
 	 * @return list of action
 	 */
-	private List<Action> getPossibleActionsToPerform(
-			@NonNull final Position current, @NonNull final Position target) {
-		double angle = Math.toDegrees(Math.atan2(target.getY() - current.getY(),
-				target.getX() - current.getX()));
+	private List<Action> getPossibleActionsToPerform(@NonNull final Position current, @NonNull final Position target) {
+		double angle = Math.toDegrees(Math.atan2(target.getY() - current.getY(), target.getX() - current.getX()));
 		if (angle < 0) {
 			angle += 360;
 		}
@@ -130,7 +124,7 @@ public class SprintRunner implements IA {
 	 * @return list of possible actions
 	 */
 	private List<Action> convertAngleToDirection(final double angle) {
-		LOGGER.info("angle {}", angle);
+		LOGGER.trace("angle {}", angle);
 		// TODO check if list with one element are better or not
 		if (angle == 0) {
 			return Arrays.asList(Action.EST);

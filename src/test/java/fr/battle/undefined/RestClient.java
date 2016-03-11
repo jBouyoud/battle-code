@@ -37,6 +37,7 @@ public class RestClient implements Closeable {
 	}
 
 	public void startGame(final long gameId) throws IOException, URISyntaxException {
+		LOGGER.info("Starting Game...");
 		// http://xxxxxx:8080/test/startBattle?gameId=xxxx&teamId=10&secret=bobsecret
 		final URI startUri = new URIBuilder().setScheme("http").setHost(server + ":8080").setPath("/test/startBattle")
 				.setParameter("gameId", Long.toString(gameId)).setParameter("teamId", Long.toString(Constants.TEAMID))

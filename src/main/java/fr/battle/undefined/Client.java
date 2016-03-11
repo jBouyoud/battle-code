@@ -68,7 +68,7 @@ public class Client {
 			Map<Long, Player> players = null;
 
 			while ((message = in.readLine()) != null && !ended) {
-				LOGGER.info("Message recu : " + message);
+				LOGGER.trace("Message recu : " + message);
 				if ("Inscription OK".equalsIgnoreCase(message)) {
 					LOGGER.info("Je me suis bien inscrit a la battle");
 					LOGGER.info("Pour voir la partie : http://" + ipServer + ":8080/?gameId=" + gameId);
@@ -90,24 +90,39 @@ public class Client {
 							parseLogos(components[2]), playersState.get(teamId));
 					//
 					fallbackIA.setWorldState(ws);
-					ia.setWorldState(ws);
 
-					Action action = ia.getNextAction();
-					if (action == null || !action.isAllowed(ws, teamId)) {
-						do {
-							LOGGER.warn("Use fallback to avoid point loss");
-							action = fallbackIA.getNextAction();
-						} while (!action.isAllowed(ws, teamId));
+					Action action = Action.EST;
+					try {
+						ia.setWorldState(ws);
+
+						action = ia.getNextAction();
+					} catch (final Throwable th) {
+						LOGGER.error("catch IA throwable", th);
+					}
+					if (action == null /*
+										 * || !action.isAllowed(ws, teamId)
+										 */) {
+						LOGGER.warn("Use fallback to avoid point loss");
+						action = fallbackIA.getNextAction();
+						if (!action.isAllowed(ws, teamId)) {
+							action = Action.EST;
+						}
 					}
 
 					// On joue
 					final String actionMessage = Constants.SECRET + "%%action::" + teamId + ";" + gameId + ";"
 							+ ws.getRound() + ";" + action.getCode();
-					LOGGER.info(actionMessage);
+					LOGGER.trace(actionMessage);
 					out.println(actionMessage);
 					out.flush();
 
 					// Update for the next round
+					try {
+						ia.afterAction();
+						fallbackIA.afterAction();
+					} catch (final Throwable th) {
+						LOGGER.error("catch IA throwable", th);
+					}
 					if (action.isSuperPower()) {
 						ws.getMe().getPlayer().decreaseSuperPower();
 					}
@@ -121,7 +136,7 @@ public class Client {
 					LOGGER.info("game over");
 					ended = true;
 				} else if ("action OK".equalsIgnoreCase(message)) {
-					LOGGER.info("Action bien pris en compte");
+					LOGGER.trace("Action bien pris en compte");
 				}
 			}
 		} catch (final IOException e) {

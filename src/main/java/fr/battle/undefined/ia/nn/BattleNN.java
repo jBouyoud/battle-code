@@ -1,10 +1,10 @@
 package fr.battle.undefined.ia.nn;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.neuroph.core.Layer;
 import org.neuroph.core.NeuralNetwork;
 import org.neuroph.core.Neuron;
-import org.neuroph.core.data.DataSet;
-import org.neuroph.core.data.DataSetRow;
 import org.neuroph.core.exceptions.VectorSizeMismatchException;
 import org.neuroph.core.learning.SupervisedLearning;
 import org.neuroph.core.transfer.Linear;
@@ -12,6 +12,7 @@ import org.neuroph.core.transfer.RectifiedLinear;
 import org.neuroph.nnet.comp.neuron.BiasNeuron;
 import org.neuroph.nnet.comp.neuron.InputNeuron;
 import org.neuroph.nnet.learning.BackPropagation;
+import org.neuroph.nnet.learning.MomentumBackpropagation;
 import org.neuroph.util.ConnectionFactory;
 import org.neuroph.util.LayerFactory;
 import org.neuroph.util.NeuralNetworkFactory;
@@ -40,6 +41,7 @@ import org.neuroph.util.random.RangeRandomizer;
  * https://github.com/technobium/neuroph-neural-network/blob/master/src/main/
  * java/com/technobium/NeuralNetworkStockPredictor.java#L134
  */
+@Slf4j
 public class BattleNN extends NeuralNetwork<BackPropagation> {
 
 	/** Serial ID */
@@ -73,8 +75,8 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 		// mlp:add(nn.Linear(n_hid, self.n_actions))
 
 		// set learnng rule
-		setLearningRule(new BackPropagation());
-		// this.setLearningRule(new MomentumBackpropagation());
+		// setLearningRule(new BackPropagation());
+		setLearningRule(new MomentumBackpropagation());
 		// this.setLearningRule(new DynamicBackPropagation());
 		randomizeWeights(new RangeRandomizer(-0.7, 0.7));
 
@@ -89,35 +91,42 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 		this.addLayer(firstHidden);
 		ConnectionFactory.fullConnect(inputLayer, firstHidden);
 
-		// 2nd layer max(0,x)
-		final Layer secondHidden = LayerFactory.createLayer(hiddenNnLayerCount, maxLayerNnProp);
-		this.addLayer(secondHidden);
-		ConnectionFactory.fullConnect(firstHidden, secondHidden);
+		// // 2nd layer max(0,x)
+		// final Layer secondHidden =
+		// LayerFactory.createLayer(hiddenNnLayerCount, maxLayerNnProp);
+		// this.addLayer(secondHidden);
+		// ConnectionFactory.fullConnect(firstHidden, secondHidden);
 
 		// 3rd layer linear reduction
 		final Layer thirdHidden = LayerFactory.createLayer(hiddenNnLayerCount, linearReductionLayerNnProp);
 		thirdHidden.addNeuron(new BiasNeuron());
 		this.addLayer(thirdHidden);
-		ConnectionFactory.fullConnect(secondHidden, thirdHidden);
+		ConnectionFactory.fullConnect(firstHidden, thirdHidden);
 
-		// 4th layer max(0,x)
-		final Layer fourthHidden = LayerFactory.createLayer(hiddenNnLayerCount, maxLayerNnProp);
-		this.addLayer(fourthHidden);
-		ConnectionFactory.fullConnect(thirdHidden, fourthHidden);
+		// // 4th layer max(0,x)
+		// final Layer fourthHidden =
+		// LayerFactory.createLayer(hiddenNnLayerCount, maxLayerNnProp);
+		// this.addLayer(fourthHidden);
+		// ConnectionFactory.fullConnect(thirdHidden, fourthHidden);
 
 		// OutputLayer
 		linearReductionLayerNnProp.setProperty("useBias", false);
 		final Layer outputLayer = LayerFactory.createLayer(outputNeurons, linearReductionLayerNnProp);
 		this.addLayer(outputLayer);
-		ConnectionFactory.fullConnect(fourthHidden, outputLayer);
+		ConnectionFactory.fullConnect(thirdHidden, outputLayer);
 
 		// set input and output cells for network
 		NeuralNetworkFactory.setDefaultIO(this);
 
 		final SupervisedLearning learningRule = getLearningRule();
-		learningRule.setMaxError(1e-5);
+		learningRule.setMaxError(.01);
 		learningRule.setLearningRate(.99);
-		learningRule.setMaxIterations(1000);
+		learningRule.setMaxIterations(50);
+		learningRule.addListener(learningEvent -> {
+			final SupervisedLearning rule = (SupervisedLearning) learningEvent.getSource();
+			LOGGER.info("Network error for interation {} : {} => total of {} ", new Object[] {
+					rule.getCurrentIteration(), rule.getTotalNetworkError(), rule.getPreviousEpochError() });
+		});
 	}
 
 	public void setInput(final int inputVector[]) throws VectorSizeMismatchException {
@@ -130,23 +139,4 @@ public class BattleNN extends NeuralNetwork<BackPropagation> {
 		}
 	}
 
-	/**
-	 * Learn from replayed Memory
-	 *
-	 * @param replayedMemory
-	 */
-	public void learn(final int[] input, final double[] desiredOutput) {
-		final DataSet trainingSet = new DataSet(getInputsCount(), getOutputsCount());
-		trainingSet.addRow(new DataSetRow(asDouble(input), desiredOutput));
-		learn(trainingSet);
-	}
-
-	private double[] asDouble(final int[] input) {
-		final double[] asDouble = new double[input.length];
-		int i = 0;
-		for (final int in : input) {
-			asDouble[i++] = in;
-		}
-		return asDouble;
-	}
 }
