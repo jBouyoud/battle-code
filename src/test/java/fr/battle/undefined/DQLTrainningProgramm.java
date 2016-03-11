@@ -7,8 +7,6 @@ import java.util.Random;
 
 import lombok.extern.slf4j.Slf4j;
 import fr.battle.undefined.ia.DeepQNetworkIA;
-import fr.battle.undefined.ia.NonSuckingRandomIA;
-import fr.battle.undefined.ia.RandomIA;
 import fr.battle.undefined.ia.SprintRunner;
 import fr.battle.undefined.ia.TrainingDeepQNetworkIA;
 import fr.battle.undefined.util.Constants;
@@ -19,19 +17,19 @@ public class DQLTrainningProgramm {
 	@SuppressWarnings("unchecked")
 	private static final Class<? extends IA>[] OTHER_IAS = new Class[] {
 			//
-			RandomIA.class,
+			SprintRunner.class,
 			//
-			NonSuckingRandomIA.class,
+			SprintRunner.class,
 			//
-			NonSuckingRandomIA.class,
+			SprintRunner.class,
 			//
-			NonSuckingRandomIA.class,
+			SprintRunner.class,
 			//
 			SprintRunner.class };
 
 	private static final Random rand = new Random();
 
-	private static final int MAX_ITERATION = 1;
+	private static final int MAX_ITERATION = 10;
 
 	public static void main(final String[] args) throws Exception {
 		LOGGER.info("Demarrage du client de test");
@@ -45,7 +43,9 @@ public class DQLTrainningProgramm {
 					throw new IllegalStateException("Already in game");
 				}
 				playGame(dql, restClient, gameId);
-				dql.save();
+				if (i % 10 == 0) {
+					dql.save();
+				}
 			}
 		}
 		dql.save();
@@ -87,6 +87,7 @@ public class DQLTrainningProgramm {
 			Thread.sleep(2000);
 			// Demarrage de la game
 			restClient.startGame(gameId);
+
 			while (!dqlClient.isEnded()) {
 				Thread.sleep(500);
 			}

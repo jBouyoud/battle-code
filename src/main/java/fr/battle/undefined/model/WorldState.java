@@ -62,15 +62,19 @@ public class WorldState {
 	}
 
 	public double getReward(final Action a) {
+		if (a == null) {
+			return -5d;
+		}
 		final Position newPos = a.getNextPosition(me.getPosition(), me.getState());
 		if (PlayerState.STUNNED.equals(me.getState())) {
 			return .0d;
 		}
-		double reward = .001d;
+		double reward = -.01d;
 		// Unauthorized actions
 		if (!a.isAllowed(this, me.getPlayer().getId())) {
 			reward += -5d;
 		}
+
 		// It a slapping action
 		reward += getSlappedPlayers(newPos).count() * 2;
 

@@ -1,6 +1,9 @@
 package fr.battle.undefined.ia;
 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 import org.neuroph.core.NeuralNetwork;
 
@@ -20,7 +23,7 @@ public class DeepQNetworkIA implements IA {
 	protected static final int SIZE = Constants.BOARD_SIZE + 1;
 	protected static final int HISTORY_LENGTH = 4;
 	protected static final int STATE_SIZE = SIZE * HISTORY_LENGTH;
-	protected static final int OUTPUT_SIZE = Action.values().length;
+	protected static final int OUTPUT_SIZE = Action.values().length + 1;
 
 	protected WorldState ws;
 	protected long teamId;
@@ -42,7 +45,7 @@ public class DeepQNetworkIA implements IA {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see fr.battle.undefined.IA#setTeamId(long)
 	 */
 	@Override
@@ -62,20 +65,35 @@ public class DeepQNetworkIA implements IA {
 		nn.setInput(history);
 		nn.calculate();
 		final double[] results = nn.getOutput();
-		return Action.values()[maxQIdx(results)];
+
+		final int maxIdx = maxQIdx(results);
+		if (maxIdx < Action.values().length) {
+			return Action.values()[maxIdx];
+		}
+		return null;
 	}
 
 	protected int maxQIdx(final double[] output) {
 		// Get index of max value
-		int actionIndex = 0;
-		double refValue = Double.MIN_VALUE;
+		final List<Integer> actionIndex = new ArrayList<>();
+		Double refValue = Double.MIN_VALUE;
 		for (int i = 0; i < output.length; i++) {
-			if (output[i] > refValue) {
-				actionIndex = i;
-				refValue = output[i];
+			if (refValue.compareTo(output[i]) == 1) {
+				actionIndex.clear();
+				actionIndex.add(i);
+				refValue = Double.valueOf(output[i]);
+			} else if (Double.valueOf(refValue).equals(output[i])) {
+				actionIndex.add(i);
 			}
 		}
-		return actionIndex;
+		if (actionIndex.size() <= 1) {
+			if (actionIndex.isEmpty()) {
+				return 0;
+			}
+			return actionIndex.get(0);
+		}
+		final Random r = new Random();
+		return actionIndex.get(r.nextInt(actionIndex.size()));
 	}
 
 	protected void updateToNewState(final int[] state) {

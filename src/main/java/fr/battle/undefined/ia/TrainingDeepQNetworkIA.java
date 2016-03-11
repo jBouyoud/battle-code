@@ -29,14 +29,14 @@ import fr.battle.undefined.util.Constants;
 @Slf4j
 public class TrainingDeepQNetworkIA extends DeepQNetworkIA {
 
-	private static final DecimalFormat df = new DecimalFormat("#.0#");
+	private static final DecimalFormat df = new DecimalFormat("#.000000#");
 
-	private static final double GAMMA = 0.9;
-	private static final double EPSILON = 0.1;
+	private static final double GAMMA = .9;
+	private static final double EPSILON = 0.5;
 
 	private final Map<Long, IA> randomIA = new HashMap<>();
 
-	private final Map<double[], Map<Double, Pair<Double, double[]>>> replayMemory = new LinkedHashMap<>();
+	private final Map<double[], Map<Pair<Integer, Double>, Pair<Double, double[]>>> replayMemory = new LinkedHashMap<>();
 
 	private final Random rand = new Random();
 	private int frameCount = 0;
@@ -45,14 +45,15 @@ public class TrainingDeepQNetworkIA extends DeepQNetworkIA {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see fr.battle.undefined.ia.DeepQNetworkIA#setTeamId(long)
 	 */
 	@Override
 	public void setTeamId(final long teamId) {
 		super.setTeamId(teamId);
 		if (!randomIA.containsKey(teamId)) {
-			createRandIAForTeam(teamId);
+			randomIA.put(teamId, new SprintRunner());
+			randomIA.get(teamId).setTeamId(teamId);
 		}
 	}
 
@@ -63,7 +64,7 @@ public class TrainingDeepQNetworkIA extends DeepQNetworkIA {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * fr.battle.undefined.ia.DeepQNetworkIA#setWorldState(fr.battle.undefined
 	 * .model.WorldState)
@@ -76,7 +77,7 @@ public class TrainingDeepQNetworkIA extends DeepQNetworkIA {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see fr.battle.undefined.ia.DeepQNetworkIA#getNextAction()
 	 */
 	@Override
@@ -91,74 +92,85 @@ public class TrainingDeepQNetworkIA extends DeepQNetworkIA {
 		nn.setInput(inputsCurr);
 		nn.calculate();
 		final double[] outputs = nn.getOutput();
-		LOGGER.debug("NN output : {}", outputs);
+		String s = "";
+		final DecimalFormat df = new DecimalFormat("#.000000#");
+		for (final double d : outputs) {
+			s += df.format(d) + ", ";
+		}
+		LOGGER.debug("NN output : {}", s);
 
+		int idx = 0;
 		for (final double out : outputs) {
-			replayMemory.get(inputsCurr).put(out, null);
+			replayMemory.get(inputsCurr).put(Pair.of(idx++, out), null);
 		}
 		Action a = null;
 		if (rand.nextDouble() <= EPSILON) {
 			a = randomIA.get(teamId).getNextAction();
 		} else {
-			a = Action.values()[maxQIdx(outputs)];
+			final int maxIdx = maxQIdx(outputs);
+			if (maxIdx < Action.values().length) {
+				a = Action.values()[maxIdx];
+			}
 		}
 		return a;
 	}
 
 	@Override
 	public void afterAction() {
-		LOGGER.info("afterAction {}", inputsCurr.hashCode());
+		LOGGER.info("afterAction {} - {}", inputsCurr.hashCode(), ws.getRound());
 		super.afterAction();
 		//
-		int actionIdx = 0;
-		for (final double out : replayMemory.get(inputsCurr).keySet()) {
-			final Action a = Action.values()[actionIdx];
+		for (final Pair<Integer, Double> out : replayMemory.get(inputsCurr).keySet()) {
+			Action a = null;
+			if (out.getKey() < Action.values().length) {
+				a = Action.values()[out.getKey()];
+			}
 			replayMemory.get(inputsCurr).put(out, Pair.of(ws.getReward(a), generateNextRandomState(inputsCurr, ws, a)));
-			actionIdx++;
 		}
 		frameCount++;
 		if (frameCount < HISTORY_LENGTH) {
+			replayMemory.clear();
 			return;
 		}
-		LOGGER.info("Compute NN learning data");
+		LOGGER.info("Compute NN learning data of {}", replayMemory.size());
 		// Mini batch learn
 		double err = 0d;
 		int count = 0;
 		final DataSet trainingSet = new DataSet(nn.getInputsCount(), nn.getOutputsCount());
-		for (final Entry<double[], Map<Double, Pair<Double, double[]>>> inputEntry : replayMemory.entrySet()) {
+		for (final Entry<double[], Map<Pair<Integer, Double>, Pair<Double, double[]>>> inputEntry : replayMemory
+				.entrySet()) {
 			final double[] ss = inputEntry.getKey();
-			int inputActionIdx = 0;
 
+			LOGGER.trace("History at {} with {} actions", count, inputEntry.getValue().size());
 			final double[] rrs = new double[nn.getOutputsCount()];
 			final double[] qPrev = new double[nn.getOutputsCount()];
 			final double[] q = new double[nn.getOutputsCount()];
-			for (final Entry<Double, Pair<Double, double[]>> inputPrimEntry : inputEntry.getValue().entrySet()) {
-				qPrev[inputActionIdx] = inputPrimEntry.getKey();
+			for (final Entry<Pair<Integer, Double>, Pair<Double, double[]>> inputPrimEntry : inputEntry.getValue()
+					.entrySet()) {
+				qPrev[inputPrimEntry.getKey().getKey()] = inputPrimEntry.getKey().getValue();
 				// final Action aa = Action.values()[inputActionIdx];
 				final double rr = inputPrimEntry.getValue().getKey();
-				rrs[inputActionIdx] = rr;
+				rrs[inputPrimEntry.getKey().getKey()] = rr;
 				final double[] ssPrim = inputPrimEntry.getValue().getValue();
 
 				if (ssPrim[SIZE * 3 + Constants.BOARD_SIZE] == 0) {
-					LOGGER.info("Game is ended");
-					q[inputActionIdx] = rr;
+					LOGGER.trace("Game is ended");
+					q[inputPrimEntry.getKey().getKey()] = rr;
 				} else {
 
 					nn.setInput(ssPrim);
 					nn.calculate();
 					final double[] qSsPrimAa = nn.getOutput();
 
-					q[inputActionIdx] = rr + GAMMA * maxQ(qSsPrimAa);
-
-					count++;
-					err += Math.pow(inputPrimEntry.getKey() - q[inputActionIdx], 2);
+					q[inputPrimEntry.getKey().getKey()] = rr + GAMMA * maxQ(qSsPrimAa);
 				}
-				inputActionIdx++;
+				count++;
+				err += Math.pow(inputPrimEntry.getKey().getValue() - q[inputPrimEntry.getKey().getKey()], 2);
 			}
-			LOGGER.info("rr    : {}", rrs);
-			LOGGER.info("qPrev : {}", qPrev);
-			LOGGER.info("q     : {}", q);
-			LOGGER.info("------");
+			LOGGER.trace("rr    : {}", rrs);
+			LOGGER.trace("qPrev : {}", qPrev);
+			LOGGER.trace("q     : {}", q);
+			LOGGER.trace("------ {}", teamId);
 			trainingSet.addRow(new DataSetRow(ss, q));
 		}
 		LOGGER.info("Start NN learning of count {}", count);
@@ -250,7 +262,7 @@ public class TrainingDeepQNetworkIA extends DeepQNetworkIA {
 		for (final double element : output) {
 			max = Math.max(element, max);
 		}
-		return max == -Double.MAX_VALUE ? 0 : max;
+		return Math.min(Math.max(max, -100), 100);
 	}
 
 }

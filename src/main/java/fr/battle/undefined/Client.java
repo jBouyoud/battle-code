@@ -130,6 +130,7 @@ public class Client {
 					ws.getSlappedPlayers(action.getNextPosition(ws.getMe().getPosition(), ws.getMe().getState())).map(
 							pi -> pi.getPlayer()).forEach(ws.getMe().getLastSlaped()::add);
 
+					ended = ws.getRound() == Constants.MAX_ROUND;
 				} else if ("Inscription KO".equalsIgnoreCase(message)) {
 					LOGGER.info("inscription KO");
 				} else if ("game over".equalsIgnoreCase(message)) {
