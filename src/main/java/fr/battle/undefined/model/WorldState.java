@@ -5,11 +5,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import fr.battle.undefined.util.Constants;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import fr.battle.undefined.util.Constants;
 
 @Getter
 @ToString
@@ -47,16 +47,18 @@ public class WorldState {
 	}
 
 	public boolean isLogoInCaddy(final Position logo) {
-		return playersState.values().parallelStream().filter(
-				playerInfo -> playerInfo.getPlayer().getCaddy().equals(logo)).count() == 1;
+		return playersState.values().parallelStream()
+				.filter(playerInfo -> playerInfo.getPlayer().getCaddy().equals(logo)).count() == 1;
 	}
 
 	public Stream<PlayerInfo> getSlappedPlayers(final Position newPos) {
 		return getPlayersState().values().parallelStream()
-		// Cannot re-slap sames players
-				.filter(pi -> me.getLastSlaped().contains(pi))
+				// Cannot re-slap sames players
+				.filter(pi -> !me.getLastSlaped().contains(pi))
 				// Cannot slap players in their home
-				.filter(pi -> pi.isAtHome())
+				.filter(pi -> !pi.isAtHome())
+				// Cannot self-slap
+				.filter(pi -> pi.getPlayer().getId() != me.getPlayer().getId())
 				// Able to slap only on adjacent position
 				.filter(pi -> pi.getPosition().isAdjacent(newPos));
 	}
@@ -99,8 +101,8 @@ public class WorldState {
 		for (final Map.Entry<Long, PlayerInfo> entry : playersState.entrySet()) {
 			final PlayerInfo playerInfo = entry.getValue();
 			// Caddy
-			world[playerInfo.getPlayer().getCaddy().getX() + playerInfo.getPlayer().getCaddy().getY()
-					* Constants.MAP_WIDTH] |= TILE_CADDY;
+			world[playerInfo.getPlayer().getCaddy().getX()
+					+ playerInfo.getPlayer().getCaddy().getY() * Constants.MAP_WIDTH] |= TILE_CADDY;
 
 			// Joueur
 			world[playerInfo.getPosition().getX() + playerInfo.getPosition().getY() * Constants.MAP_WIDTH] |= me
@@ -120,7 +122,7 @@ public class WorldState {
 		private Position position;
 		private int score;
 		private PlayerState state;
-		private final List<Player> lastSlaped = new ArrayList<>();
+		private List<Player> lastSlaped = new ArrayList<>();
 
 		public PlayerInfo(final Player player, final Position position, final int score, final PlayerState state) {
 			super();

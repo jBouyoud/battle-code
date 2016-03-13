@@ -11,9 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import fr.battle.undefined.ia.NonSuckingRandomIA;
 import fr.battle.undefined.model.Action;
 import fr.battle.undefined.model.Player;
@@ -22,6 +19,9 @@ import fr.battle.undefined.model.Position;
 import fr.battle.undefined.model.WorldState;
 import fr.battle.undefined.model.WorldState.PlayerInfo;
 import fr.battle.undefined.util.Constants;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -38,6 +38,7 @@ public class Client {
 	private final long gameId;
 	private final IA ia;
 	private final IA fallbackIA = new NonSuckingRandomIA();
+	private WorldState ws = null;
 
 	@Getter
 	private volatile boolean ended = false;
@@ -80,14 +81,22 @@ public class Client {
 						for (final String playerInfo : playerInfos) {
 							final String[] pComponents = playerInfo.split(",");
 							final long id = Long.parseLong(pComponents[0]);
-							players.put(id, new Player(id, new Position(Integer.parseInt(pComponents[1]), Integer
-									.parseInt(pComponents[2]))));
+							players.put(id, new Player(id,
+									new Position(Integer.parseInt(pComponents[1]), Integer.parseInt(pComponents[2]))));
 						}
 					}
 					// Mise à jour de l'etat
 					final Map<Long, PlayerInfo> playersState = parsePlayerState(players, components[1]);
-					final WorldState ws = new WorldState(Integer.parseInt(components[0]), playersState,
+
+					final WorldState newWs = new WorldState(Integer.parseInt(components[0]), playersState,
 							parseLogos(components[2]), playersState.get(teamId));
+
+					// Inject last slapped players from previous world state
+					if (ws != null) {
+						newWs.getMe().setLastSlaped(ws.getMe().getLastSlaped());
+					}
+					ws = newWs;
+
 					//
 					fallbackIA.setWorldState(ws);
 
@@ -126,9 +135,13 @@ public class Client {
 					if (action.isSuperPower()) {
 						ws.getMe().getPlayer().decreaseSuperPower();
 					}
-					ws.getMe().getLastSlaped().clear();
-					ws.getSlappedPlayers(action.getNextPosition(ws.getMe().getPosition(), ws.getMe().getState())).map(
-							pi -> pi.getPlayer()).forEach(ws.getMe().getLastSlaped()::add);
+
+					if (ws.getSlappedPlayers(action.getNextPosition(ws.getMe().getPosition(), ws.getMe().getState()))
+							.count() > 0) {
+						ws.getMe().getLastSlaped().clear();
+						ws.getSlappedPlayers(action.getNextPosition(ws.getMe().getPosition(), ws.getMe().getState()))
+								.map(pi -> pi.getPlayer()).forEach(ws.getMe().getLastSlaped()::add);
+					}
 
 					ended = ws.getRound() == Constants.MAX_ROUND;
 				} else if ("Inscription KO".equalsIgnoreCase(message)) {
@@ -164,8 +177,9 @@ public class Client {
 			final String[] info = playersInfo.split(",");
 			final long playerId = Long.parseLong(info[0]);
 			final Player p = players.get(playerId);
-			playersStates.put(playerId, new PlayerInfo(p, new Position(Integer.parseInt(info[1]), Integer
-					.parseInt(info[2])), Integer.parseInt(info[3]), PlayerState.valueOf(info[4].toUpperCase())));
+			playersStates.put(playerId,
+					new PlayerInfo(p, new Position(Integer.parseInt(info[1]), Integer.parseInt(info[2])),
+							Integer.parseInt(info[3]), PlayerState.valueOf(info[4].toUpperCase())));
 		}
 		return playersStates;
 	}
