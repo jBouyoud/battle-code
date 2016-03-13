@@ -1,11 +1,11 @@
 package fr.battle.undefined.ia;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import fr.battle.undefined.IA;
 import fr.battle.undefined.model.Action;
+import fr.battle.undefined.model.Player;
 import fr.battle.undefined.model.Position;
 import fr.battle.undefined.model.WorldState;
 import fr.battle.undefined.model.WorldState.PlayerInfo;
@@ -17,12 +17,10 @@ public class MothIA implements IA {
 	private WorldState ws;
 	private long teamId;
 
-	private static double slapRatio = 1d;
+	private static double slapRatio = 10d;
 	private static double pickRatio = 1d;
 	private static double dropRation = 1d;
 	private static double uncertaintyRatio = 0.9d;
-
-	Map<Long, Long> lastSlappedMemory = new HashMap<>();
 
 	@Override
 	public void setTeamId(final long teamId) {
@@ -51,7 +49,6 @@ public class MothIA implements IA {
 
 		Action bestAction = null;
 		double bestActionReward = Double.MIN_VALUE;
-		final Long bestActionSlapperVictims = null;
 
 		final List<Action> allowedActions = Action.allowed(ws, teamId);
 
@@ -80,14 +77,7 @@ public class MothIA implements IA {
 				bestAction = action;
 				bestActionReward = totalReward;
 
-				// Compute slapped victims
-				ws.getSlappedPlayers(nextPosition).findFirst();
-				if (ws.getSlappedPlayers(nextPosition).count() != 0) {
-					lastSlappedMemory.put(ws.getMe().getPlayer().getId(),
-							ws.getSlappedPlayers(nextPosition).findFirst().get().getPlayer().getId());
-				}
-
-				LOGGER.info("Action is elected as best");
+				LOGGER.debug("Action is elected as best");
 			}
 		}
 
@@ -110,14 +100,16 @@ public class MothIA implements IA {
 		for (final Map.Entry<Long, PlayerInfo> entry : ws.getPlayersState().entrySet()) {
 			final PlayerInfo victim = entry.getValue();
 
+			final List<Player> lastSlapped = ws.getMe().getLastSlaped();
+			// System.out.println(lastSlapped);
+
 			// Ne pas s'attaquer soit-même...
 			if (ws.getMe().equals(victim)) {
 				continue;
 			}
 
 			// Pas déja slappée
-			if (lastSlappedMemory.get(ws.getMe().getPlayer().getId()) != null
-					&& lastSlappedMemory.get(ws.getMe().getPlayer().getId()).equals(victim.getPlayer().getId())) {
+			if (ws.getMe().getLastSlaped().contains(victim.getPlayer())) {
 				LOGGER.debug("Victim already slapped");
 				continue;
 			}
