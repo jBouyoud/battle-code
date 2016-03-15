@@ -14,6 +14,8 @@ import fr.battle.undefined.ia.nn.data.Weights;
  */
 public class NN {
 
+	private static final int MAX_SCORE = 1;
+
 	public final boolean DEBUG = false;
 
 	final int INPUT = 0;
@@ -232,18 +234,6 @@ public class NN {
 	 *            bias is also updated here
 	 */
 	public void applyBackpropagation(final double expectedOutput[]) {
-		// error check
-		for (int i = 0; i < expectedOutput.length; i++) {
-			final double d = expectedOutput[i];
-			if (d < 0 || d > 1) {
-				// only propagate back valid range
-				if (d < 0) {
-					expectedOutput[i] = 0 + epsilon;
-				} else {
-					expectedOutput[i] = 1 - epsilon;
-				}
-			}
-		}
 
 		int i = 0;
 		for (final Neuron n : outputLayer) {
@@ -253,7 +243,7 @@ public class NN {
 				final double ai = con.leftNeuron.getOutput();
 				final double desiredOutput = expectedOutput[i];
 
-				final double partialDerivative = -ak * (1 - ak) * ai * (desiredOutput - ak);
+				final double partialDerivative = -ak * (MAX_SCORE - ak) * ai * (desiredOutput - ak);
 				final double deltaWeight = -learningRate * partialDerivative;
 				final double newWeight = con.getWeight() + deltaWeight;
 				con.setDeltaWeight(deltaWeight);
@@ -275,10 +265,10 @@ public class NN {
 					final double desiredOutput = expectedOutput[j];
 					final double ak = out_neu.getOutput();
 					j++;
-					sumKoutputs = sumKoutputs + -(desiredOutput - ak) * ak * (1 - ak) * wjk;
+					sumKoutputs = sumKoutputs + -(desiredOutput - ak) * ak * (MAX_SCORE - ak) * wjk;
 				}
 
-				final double partialDerivative = aj * (1 - aj) * ai * sumKoutputs;
+				final double partialDerivative = aj * (MAX_SCORE - aj) * ai * sumKoutputs;
 				final double deltaWeight = -learningRate * partialDerivative;
 				final double newWeight = con.getWeight() + deltaWeight;
 				con.setDeltaWeight(deltaWeight);
@@ -287,17 +277,7 @@ public class NN {
 		}
 	}
 
-	public void applyBackpropagation(double expectedOutput, final int index) {
-		// error check
-		final double d = expectedOutput;
-		if (d < 0 || d > 1) {
-			// only propagate back valid range
-			if (d < 0) {
-				expectedOutput = 0 + epsilon;
-			} else {
-				expectedOutput = 1 - epsilon;
-			}
-		}
+	public void applyBackpropagation(final double expectedOutput, final int index) {
 
 		int i = 0;
 		for (final Neuron n : outputLayer) {
@@ -306,12 +286,15 @@ public class NN {
 			}
 			final ArrayList<Connection> connections = n.getAllInConnections();
 			for (final Connection con : connections) {
+
 				final double ak = n.getOutput();
 				final double ai = con.leftNeuron.getOutput();
 				final double desiredOutput = expectedOutput;
 
-				final double partialDerivative = -ak * (1 - ak) * ai * (desiredOutput - ak);
-				final double deltaWeight = -learningRate * partialDerivative;
+				final double deltaK = expectedOutput - ak;
+				final double errorSignal = (1 - ak) * ak * deltaK;
+				// final double partialDerivative =
+				final double deltaWeight = learningRate * errorSignal;
 				final double newWeight = con.getWeight() + deltaWeight;
 				con.setDeltaWeight(deltaWeight);
 				con.setWeight(newWeight + momentum * con.getPrevDeltaWeight());
@@ -335,11 +318,13 @@ public class NN {
 					final double desiredOutput = expectedOutput;
 					final double ak = out_neu.getOutput();
 					j++;
-					sumKoutputs = sumKoutputs + -(desiredOutput - ak) * ak * (1 - ak) * wjk;
+					sumKoutputs += (desiredOutput - ak) * ak * (1 - ak) * wjk;
 				}
 
-				final double partialDerivative = aj * (1 - aj) * ai * sumKoutputs;
-				final double deltaWeight = -learningRate * partialDerivative;
+				// final double partialDerivative = aj * (1 - aj) * ai *
+				// sumKoutputs;
+				final double partialDerivative = aj * (1 - aj) * sumKoutputs;
+				final double deltaWeight = learningRate * partialDerivative;
 				final double newWeight = con.getWeight() + deltaWeight;
 				con.setDeltaWeight(deltaWeight);
 				con.setWeight(newWeight + momentum * con.getPrevDeltaWeight());

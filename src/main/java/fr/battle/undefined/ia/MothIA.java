@@ -17,10 +17,10 @@ public class MothIA implements IA {
 	private WorldState ws;
 	private long teamId;
 
-	private static double slapRatio = 10d;
+	private static double slapRatio = 1d;
 	private static double pickRatio = 1d;
-	private static double dropRation = 1d;
-	private static double uncertaintyRatio = 0.9d;
+	private static double dropRation = 10d;
+	private static double uncertaintyRatio = 2d;
 
 	@Override
 	public void setTeamId(final long teamId) {
@@ -58,8 +58,8 @@ public class MothIA implements IA {
 
 			LOGGER.debug("Start processionc action " + action.getCode());
 
-			final Position nextPosition = new Position(currentPosition.getX() + action.getDx(),
-					currentPosition.getY() + action.getDy());
+			final Position nextPosition = new Position(currentPosition.getX() + action.getDx(), currentPosition.getY()
+					+ action.getDy());
 
 			final double slapRatioed = slapRatio * computeSlapReward(nextPosition);
 			final double pickRatioed = pickRatio * computePickReward(nextPosition);
@@ -186,8 +186,8 @@ public class MothIA implements IA {
 			for (final Position position : ws.getLogos()) {
 				if (!ws.isLogoInCaddy(position)) {
 
-					final double distance = tilesDistance(ws.getMe().getPlayer().getCaddy(), position)
-							+ tilesDistance(nextPosition, position);
+					final double distance = tilesDistance(ws.getMe().getPlayer().getCaddy(), position) + tilesDistance(
+							nextPosition, position);
 					final double localReward = distance <= ws.getRoundLeft() ? 30d / distance * uncertaintyRatio : 0;
 					reward += localReward;
 

@@ -29,7 +29,7 @@ public class TrainingAvaIA extends AvaIA {
 	private static final DecimalFormat df = new DecimalFormat("#.000000#");
 
 	private static final double GAMMA = .9;
-	private static final double EPSILON = 0.9;
+	private static final double EPSILON = 0.6;
 
 	private final Map<Long, IA> randomIA = new HashMap<>();
 
@@ -144,7 +144,6 @@ public class TrainingAvaIA extends AvaIA {
 			for (final Entry<Pair<Integer, Double>, Pair<Double, double[]>> inputPrimEntry : inputEntry.getValue()
 					.entrySet()) {
 				qPrev[inputPrimEntry.getKey().getKey()] = inputPrimEntry.getKey().getValue();
-				// final Action aa = Action.values()[inputActionIdx];
 				final double rr = inputPrimEntry.getValue().getKey();
 				rrs[inputPrimEntry.getKey().getKey()] = rr;
 				final double[] ssPrim = inputPrimEntry.getValue().getValue();
@@ -163,19 +162,22 @@ public class TrainingAvaIA extends AvaIA {
 				count++;
 				err += Math.pow(inputPrimEntry.getKey().getValue() - q[inputPrimEntry.getKey().getKey()], 2);
 			}
-			LOGGER.trace("rr    : {}", rrs);
-			LOGGER.trace("qPrev : {}", qPrev);
-			LOGGER.trace("q     : {}", q);
+			LOGGER.debug("rr    : {}", rrs);
+			LOGGER.debug("qPrev : {}", qPrev);
+			LOGGER.debug("q     : {}", q);
 			LOGGER.trace("------ {}", teamId);
 		}
 		LOGGER.info("Start NN learning of count {}", count);
 		LOGGER.warn("Avg Error {}", df.format(Math.sqrt(err / count)));
 		// Clean last scene from memory in order to learn faster (Online
 		// training instead of offline training)
-		final Optional<Entry<double[], Map<Pair<Integer, Double>, Pair<Double, double[]>>>> olderEvent = replayMemory
-				.entrySet().stream().findFirst();
-		if (olderEvent.isPresent()) {
-			replayMemory.remove(olderEvent.get().getKey());
+		if (replayMemory.size() > 100) {
+			final Optional<Entry<double[], Map<Pair<Integer, Double>, Pair<Double, double[]>>>> olderEvent = replayMemory
+					.entrySet().stream().filter(e -> e.getValue().keySet().stream().map(p -> p.getValue()).filter(
+							v -> v == 0.0).count() == e.getValue().size()).findFirst();
+			if (olderEvent.isPresent()) {
+				replayMemory.remove(olderEvent.get().getKey());
+			}
 		}
 	}
 
@@ -186,13 +188,11 @@ public class TrainingAvaIA extends AvaIA {
 		}
 		final Map<Long, PlayerInfo> playersState = new LinkedHashMap<>(ws.getPlayersState().size());
 		for (final Entry<Long, PlayerInfo> playerStateEntry : playersState.entrySet()) {
-			playersState.put(playerStateEntry.getKey(),
-					new PlayerInfo(
-							new Player(playerStateEntry.getValue().getPlayer().getId(),
-									new Position(playerStateEntry.getValue().getPlayer().getCaddy().getX(),
-											playerStateEntry.getValue().getPlayer().getCaddy().getY())),
-					playerStateEntry.getValue().getPosition(), playerStateEntry.getValue().getScore(),
-					playerStateEntry.getValue().getState()));
+			playersState.put(playerStateEntry.getKey(), new PlayerInfo(new Player(playerStateEntry.getValue()
+					.getPlayer().getId(), new Position(playerStateEntry.getValue().getPlayer().getCaddy().getX(),
+							playerStateEntry.getValue().getPlayer().getCaddy().getY())), playerStateEntry.getValue()
+									.getPosition(), playerStateEntry.getValue().getScore(), playerStateEntry.getValue()
+											.getState()));
 		}
 		final WorldState ws2 = new WorldState(ws.getRound() + 1, playersState, logos, playersState.get(teamId));
 
@@ -236,8 +236,8 @@ public class TrainingAvaIA extends AvaIA {
 			});
 
 			// Mise en stunned des players suivant si nécessaire
-			pi.getLastSlaped().stream().map(p -> p.getId())
-					.forEach(id -> playersState.get(id).setState(PlayerState.STUNNED));
+			pi.getLastSlaped().stream().map(p -> p.getId()).forEach(id -> playersState.get(id).setState(
+					PlayerState.STUNNED));
 			// TODO Gerer le fait que les logo re(spawn enrandom a plus ou moins
 			// deux cases
 		}
@@ -266,7 +266,7 @@ public class TrainingAvaIA extends AvaIA {
 		for (final double element : output) {
 			max = Math.max(element, max);
 		}
-		return Math.min(Math.max(max, -100), 100);
+		return Math.min(Math.max(max, -1000), 1000);
 	}
 
 }

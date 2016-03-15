@@ -24,7 +24,7 @@ public class AvaIA implements IA {
 	protected static final int SIZE = Constants.BOARD_SIZE + 1;
 	protected static final int HISTORY_LENGTH = 4;
 	protected static final int STATE_SIZE = SIZE * HISTORY_LENGTH;
-	protected static final int OUTPUT_SIZE = Action.values().length + 1;
+	protected static final int OUTPUT_SIZE = Action.values().length;
 
 	protected WorldState ws;
 	protected long teamId;
@@ -46,7 +46,7 @@ public class AvaIA implements IA {
 	}
 
 	public void save() {
-		nn.printAllWeights();
+		// nn.printAllWeights();
 		FileTool.saveObject(nn.getAllWeights(), "./nn-weight.ser");
 	}
 

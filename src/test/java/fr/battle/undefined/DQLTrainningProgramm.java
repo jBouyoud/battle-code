@@ -5,11 +5,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-import lombok.extern.slf4j.Slf4j;
-import fr.battle.undefined.ia.DeepQNetworkIA;
+import fr.battle.undefined.ia.AvaIA;
+import fr.battle.undefined.ia.BlinkyIA;
+import fr.battle.undefined.ia.MothIA;
 import fr.battle.undefined.ia.SprintRunner;
-import fr.battle.undefined.ia.TrainingDeepQNetworkIA;
+import fr.battle.undefined.ia.TrainingAvaIA;
 import fr.battle.undefined.util.Constants;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class DQLTrainningProgramm {
@@ -17,11 +19,11 @@ public class DQLTrainningProgramm {
 	@SuppressWarnings("unchecked")
 	private static final Class<? extends IA>[] OTHER_IAS = new Class[] {
 			//
-			SprintRunner.class,
+			MothIA.class,
 			//
-			SprintRunner.class,
+			MothIA.class,
 			//
-			SprintRunner.class,
+			BlinkyIA.class,
 			//
 			SprintRunner.class,
 			//
@@ -29,12 +31,12 @@ public class DQLTrainningProgramm {
 
 	private static final Random rand = new Random();
 
-	private static final int MAX_ITERATION = 10;
+	private static final int MAX_ITERATION = 1000;
 
 	public static void main(final String[] args) throws Exception {
 		LOGGER.info("Demarrage du client de test");
 
-		final DeepQNetworkIA dql = new TrainingDeepQNetworkIA();
+		final AvaIA dql = new TrainingAvaIA();
 
 		try (RestClient restClient = new RestClient(LauncherTest.SERVER)) {
 			for (int i = 0; i < MAX_ITERATION; ++i) {
@@ -51,8 +53,7 @@ public class DQLTrainningProgramm {
 		dql.save();
 	}
 
-	private static void playGame(final DeepQNetworkIA dql, final RestClient restClient, final long gameId)
-			throws Exception {
+	private static void playGame(final AvaIA dql, final RestClient restClient, final long gameId) throws Exception {
 		try {
 			// Creation des joueurs et leur enregistrement a la partie
 			Client dqlClient = null;
