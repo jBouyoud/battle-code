@@ -171,14 +171,18 @@ public class TrainingAvaIA extends AvaIA {
 		LOGGER.warn("Avg Error {}", df.format(Math.sqrt(err / count)));
 		// Clean last scene from memory in order to learn faster (Online
 		// training instead of offline training)
-		if (replayMemory.size() > 100) {
-			final Optional<Entry<double[], Map<Pair<Integer, Double>, Pair<Double, double[]>>>> olderEvent = replayMemory
-					.entrySet().stream().filter(e -> e.getValue().keySet().stream().map(p -> p.getValue()).filter(
-							v -> v == 0.0).count() == e.getValue().size()).findFirst();
-			if (olderEvent.isPresent()) {
-				replayMemory.remove(olderEvent.get().getKey());
-			}
+		// if (replayMemory.size() > 100) {
+		// final Optional<Entry<double[], Map<Pair<Integer, Double>,
+		// Pair<Double, double[]>>>> olderEvent = replayMemory
+		// .entrySet().stream().filter(e -> e.getValue().keySet().stream().map(p
+		// -> p.getValue()).filter(
+		// v -> v == 0.0).count() == e.getValue().size()).findFirst();
+		final Optional<Entry<double[], Map<Pair<Integer, Double>, Pair<Double, double[]>>>> olderEvent = replayMemory
+				.entrySet().stream().findFirst();
+		if (olderEvent.isPresent()) {
+			replayMemory.remove(olderEvent.get().getKey());
 		}
+		// }
 	}
 
 	private double[] generateNextRandomState(final double[] currentState, final WorldState ws, final Action a) {
@@ -188,11 +192,13 @@ public class TrainingAvaIA extends AvaIA {
 		}
 		final Map<Long, PlayerInfo> playersState = new LinkedHashMap<>(ws.getPlayersState().size());
 		for (final Entry<Long, PlayerInfo> playerStateEntry : playersState.entrySet()) {
-			playersState.put(playerStateEntry.getKey(), new PlayerInfo(new Player(playerStateEntry.getValue()
-					.getPlayer().getId(), new Position(playerStateEntry.getValue().getPlayer().getCaddy().getX(),
-							playerStateEntry.getValue().getPlayer().getCaddy().getY())), playerStateEntry.getValue()
-									.getPosition(), playerStateEntry.getValue().getScore(), playerStateEntry.getValue()
-											.getState()));
+			playersState.put(playerStateEntry.getKey(),
+					new PlayerInfo(
+							new Player(playerStateEntry.getValue().getPlayer().getId(),
+									new Position(playerStateEntry.getValue().getPlayer().getCaddy().getX(),
+											playerStateEntry.getValue().getPlayer().getCaddy().getY())),
+					playerStateEntry.getValue().getPosition(), playerStateEntry.getValue().getScore(),
+					playerStateEntry.getValue().getState()));
 		}
 		final WorldState ws2 = new WorldState(ws.getRound() + 1, playersState, logos, playersState.get(teamId));
 
@@ -236,8 +242,8 @@ public class TrainingAvaIA extends AvaIA {
 			});
 
 			// Mise en stunned des players suivant si nécessaire
-			pi.getLastSlaped().stream().map(p -> p.getId()).forEach(id -> playersState.get(id).setState(
-					PlayerState.STUNNED));
+			pi.getLastSlaped().stream().map(p -> p.getId())
+					.forEach(id -> playersState.get(id).setState(PlayerState.STUNNED));
 			// TODO Gerer le fait que les logo re(spawn enrandom a plus ou moins
 			// deux cases
 		}

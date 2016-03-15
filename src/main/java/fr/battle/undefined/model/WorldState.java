@@ -79,7 +79,7 @@ public class WorldState {
 
 		// It a slapping action
 		reward += getSlappedPlayers(newPos).count() * 2;
-
+		reward += logos.stream().filter(p -> p.equals(newPos)).count() * 1;
 		if (isCarrying(me.getPlayer().getId()) && newPos.equals(me.getPlayer().getCaddy())) {
 			reward += 30;
 		}

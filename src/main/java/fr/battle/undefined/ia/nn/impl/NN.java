@@ -3,6 +3,8 @@ package fr.battle.undefined.ia.nn.impl;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import fr.battle.undefined.ia.nn.data.Weight;
@@ -226,109 +228,53 @@ public class NN {
 		}
 	}
 
-	/**
-	 *
-	 * @param expectedOutput
-	 *            first calculate the partial derivative of the error with
-	 *            respect to each of the weight leading into the output neurons
-	 *            bias is also updated here
-	 */
-	public void applyBackpropagation(final double expectedOutput[]) {
-
-		int i = 0;
-		for (final Neuron n : outputLayer) {
-			final ArrayList<Connection> connections = n.getAllInConnections();
-			for (final Connection con : connections) {
-				final double ak = n.getOutput();
-				final double ai = con.leftNeuron.getOutput();
-				final double desiredOutput = expectedOutput[i];
-
-				final double partialDerivative = -ak * (MAX_SCORE - ak) * ai * (desiredOutput - ak);
-				final double deltaWeight = -learningRate * partialDerivative;
-				final double newWeight = con.getWeight() + deltaWeight;
-				con.setDeltaWeight(deltaWeight);
-				con.setWeight(newWeight + momentum * con.getPrevDeltaWeight());
-			}
-			i++;
-		}
-
-		// update weights for the hidden layer
-		for (final Neuron n : hiddenLayer) {
-			final ArrayList<Connection> connections = n.getAllInConnections();
-			for (final Connection con : connections) {
-				final double aj = n.getOutput();
-				final double ai = con.leftNeuron.getOutput();
-				double sumKoutputs = 0;
-				int j = 0;
-				for (final Neuron out_neu : outputLayer) {
-					final double wjk = out_neu.getConnection(n.getId()).getWeight();
-					final double desiredOutput = expectedOutput[j];
-					final double ak = out_neu.getOutput();
-					j++;
-					sumKoutputs = sumKoutputs + -(desiredOutput - ak) * ak * (MAX_SCORE - ak) * wjk;
-				}
-
-				final double partialDerivative = aj * (MAX_SCORE - aj) * ai * sumKoutputs;
-				final double deltaWeight = -learningRate * partialDerivative;
-				final double newWeight = con.getWeight() + deltaWeight;
-				con.setDeltaWeight(deltaWeight);
-				con.setWeight(newWeight + momentum * con.getPrevDeltaWeight());
-			}
-		}
-	}
-
 	public void applyBackpropagation(final double expectedOutput, final int index) {
 
 		int i = 0;
+		final Map<Neuron, Double> outputErrs = new HashMap<>();
 		for (final Neuron n : outputLayer) {
 			if (index != i) {
+				i++;
 				continue;
 			}
+
+			final double ak = n.getOutput();
+			final double deltaK = expectedOutput - ak;
+			final double errorSignal = (1 - ak) * ak * deltaK;
+			outputErrs.put(n, errorSignal);
 			final ArrayList<Connection> connections = n.getAllInConnections();
 			for (final Connection con : connections) {
-
-				final double ak = n.getOutput();
-				final double ai = con.leftNeuron.getOutput();
-				final double desiredOutput = expectedOutput;
-
-				final double deltaK = expectedOutput - ak;
-				final double errorSignal = (1 - ak) * ak * deltaK;
-				// final double partialDerivative =
-				final double deltaWeight = learningRate * errorSignal;
-				final double newWeight = con.getWeight() + deltaWeight;
-				con.setDeltaWeight(deltaWeight);
-				con.setWeight(newWeight + momentum * con.getPrevDeltaWeight());
+				con.setWeight(con.getWeight() + learningRate * errorSignal * con.getFromNeuron().output);
 			}
+			// Update bias
+			n.biasConnection.setWeight(n.biasConnection.getWeight() + learningRate * errorSignal);
 			i++;
 		}
 
 		// update weights for the hidden layer
 		for (final Neuron n : hiddenLayer) {
-			final ArrayList<Connection> connections = n.getAllInConnections();
-			for (final Connection con : connections) {
-				final double aj = n.getOutput();
-				final double ai = con.leftNeuron.getOutput();
-				double sumKoutputs = 0;
-				int j = 0;
-				for (final Neuron out_neu : outputLayer) {
-					if (index != j) {
-						continue;
-					}
-					final double wjk = out_neu.getConnection(n.getId()).getWeight();
-					final double desiredOutput = expectedOutput;
-					final double ak = out_neu.getOutput();
+			final Map<Neuron, Double> inputErr = new HashMap<>();
+			int j = 0;
+			for (final Neuron outNeuron : outputLayer) {
+				if (index != j) {
 					j++;
-					sumKoutputs += (desiredOutput - ak) * ak * (1 - ak) * wjk;
+					continue;
 				}
-
-				// final double partialDerivative = aj * (1 - aj) * ai *
-				// sumKoutputs;
-				final double partialDerivative = aj * (1 - aj) * sumKoutputs;
-				final double deltaWeight = learningRate * partialDerivative;
-				final double newWeight = con.getWeight() + deltaWeight;
-				con.setDeltaWeight(deltaWeight);
-				con.setWeight(newWeight + momentum * con.getPrevDeltaWeight());
+				final Connection conn = outNeuron.getAllInConnections().stream().filter(c -> c.leftNeuron.id == n.id)
+						.findFirst().get();
+				inputErr.put(n, outputErrs.get(outNeuron) * conn.weight);
+				j++;
 			}
+			inputErr.put(n, inputErr.get(n) * n.output * (1 - n.output));
+
+			// Get all connections from input layer to this hidden neuron
+			final List<Connection> connInputToHidden = n.getAllInConnections();
+			connInputToHidden.parallelStream().forEach(conn -> {
+				conn.setWeight(conn.getWeight() + learningRate * inputErr.get(n) * conn.getFromNeuron().output);
+			});
+
+			// Upadate bias
+			n.biasConnection.setWeight(n.biasConnection.getWeight() + learningRate * inputErr.get(n));
 		}
 	}
 }
