@@ -31,7 +31,7 @@ public class DQLTrainningProgramm {
 
 	private static final Random rand = new Random();
 
-	private static final int MAX_ITERATION = 1000;
+	private static final int MAX_ITERATION = 100000;
 
 	public static void main(final String[] args) throws Exception {
 		LOGGER.info("Demarrage du client de test");
